@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lobby – Puissance 4</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #f0f4f8;
+      margin: 0;
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+      animation: fadeIn 0.6s ease;
+      width: 90%;
+      max-width: 420px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      color: #031427;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      font-size: 1rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      opacity: 0.9;
+    }
+
+    .btn:disabled {
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.4);
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bienvenue {{ pseudo }}</h1>
+    <form method="GET" action="/jeu">
+      <button type="submit" class="btn">🎮 Jouer contre l'IA</button>
+    </form>
+    <form>
+      <button type="button" class="btn" disabled>🕹️ Jouer en ligne (bientôt)</button>
+    </form>
+
+    {% if pseudo.lower() == 'admin' %}
+    <form method="GET" action="/admin">
+      <button type="submit" class="btn" style="background:linear-gradient(90deg,#00ffc6,#00baff);font-weight:600;">👑 Panneau Admin</button>
+    </form>
+    {% endif %}
+
+    <form method="POST" action="/logout">
+      <button type="submit" class="btn" style="background:rgba(255,255,255,0.1);color:#eee;">🚪 Déconnexion</button>
+    </form>
+  </div>
+</body>
+</html>

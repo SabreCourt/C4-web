@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connexion – Puissance 4</title>
+  <style>
+    /* --- RESET --- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #f0f4f8;
+    }
+
+    /* --- CONTAINER --- */
+    .container {
+      width: 100%;
+      max-width: 420px;
+      padding: 32px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      text-align: center;
+      animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* --- TABS --- */
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.06);
+      transition: 0.2s ease;
+      font-weight: 500;
+      color: #cde0ff;
+    }
+
+    .tab:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .tab.active {
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      color: #031427;
+      font-weight: 600;
+    }
+
+    /* --- FORM --- */
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(0, 0, 0, 0.25);
+      color: white;
+      outline: none;
+      transition: 0.2s ease;
+    }
+
+    input:focus {
+      border-color: #1E90FF;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    button {
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      color: #031427;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    /* --- MESSAGES --- */
+    .note {
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      color: #ddd;
+    }
+
+    .error { color: #ffb3b3; }
+    .success { color: #b6ffb6; }
+
+    /* --- LISTE PSEUDOS --- */
+    .existing-list {
+      margin-top: 20px;
+      text-align: left;
+      font-size: 0.9rem;
+      color: #ccc;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 10px;
+      border-radius: 8px;
+      max-height: 120px;
+      overflow-y: auto;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.4);
+    }
+
+    .existing-list div {
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .existing-list div:last-child {
+      border-bottom: none;
+    }
+
+    @media (max-width: 480px) {
+      .container { margin: 20px; padding: 24px; }
+      h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Puissance 4</h1>
+
+    <div class="tabs">
+      <div id="tab-login" class="tab active">Se connecter</div>
+      <div id="tab-register" class="tab">Créer un compte</div>
+    </div>
+
+    <div id="messages" class="note"></div>
+
+    <form id="auth-form" onsubmit="return false;">
+      <input type="text" id="username" name="username" placeholder="Nom d'utilisateur" required>
+      <input type="password" id="password" name="password" placeholder="Mot de passe" required>
+      <input type="password" id="password2" name="password2" placeholder="Confirmez le mot de passe" style="display:none;">
+      <button id="submit-btn">Se connecter</button>
+    </form>
+
+    {% if pseudos %}
+      <p class="note" style="margin-top:12px;">Pseudos récents :</p>
+      <div class="existing-list">
+        {% for p in pseudos %}
+          <div>{{ p }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const password2 = document.getElementById('password2');
+    const submitBtn = document.getElementById('submit-btn');
+    const messages = document.getElementById('messages');
+
+    function setMode(mode){
+      if(mode === 'login'){
+        tabLogin.classList.add('active');
+        tabRegister.classList.remove('active');
+        password2.style.display = 'none';
+        submitBtn.textContent = 'Se connecter';
+      } else {
+        tabLogin.classList.remove('active');
+        tabRegister.classList.add('active');
+        password2.style.display = 'block';
+        submitBtn.textContent = 'Créer le compte';
+      }
+      messages.textContent = '';
+      messages.className = 'note';
+    }
+
+    tabLogin.addEventListener('click', ()=> setMode('login'));
+    tabRegister.addEventListener('click', ()=> setMode('register'));
+
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const mode = tabRegister.classList.contains('active') ? 'register' : 'login';
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const password_2 = document.getElementById('password2').value;
+
+      if(!username || !password){
+        messages.textContent = 'Veuillez remplir tous les champs obligatoires.';
+        messages.className = 'note error';
+        return;
+      }
+      if(mode === 'register' && password !== password_2){
+        messages.textContent = 'Les mots de passe ne correspondent pas.';
+        messages.className = 'note error';
+        return;
+      }
+
+      const endpoint = mode === 'register' ? '/register' : '/login';
+      try{
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, password2: password_2 })
+        });
+        const data = await res.json();
+        if(res.ok && data.ok){
+          messages.textContent = 'Succès — redirection...';
+          messages.className = 'note success';
+          window.location.href = '/lobby';
+        } else {
+          let err = data && data.error ? data.error : 'Erreur inconnue';
+          if(err === 'username_taken') err = "Nom d'utilisateur déjà pris.";
+          else if(err === 'invalid_credentials') err = "Nom d'utilisateur ou mot de passe invalide.";
+          else if(err === 'password_mismatch') err = "Les mots de passe ne correspondent pas.";
+          else if(err === 'missing_fields') err = "Champs manquants.";
+          messages.textContent = err;
+          messages.className = 'note error';
+        }
+      }catch(err){
+        messages.textContent = 'Erreur réseau.';
+        messages.className = 'note error';
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>

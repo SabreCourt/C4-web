@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=0.9" />
+  <title>Puissance 4</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
+
+  <style>
+    /* --- RESET --- */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* --- BODY --- */
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
+      background-attachment: fixed; 
+      background-size: cover;
+      background-repeat: no-repeat;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #f0f4f8;
+      animation: fadeIn 0.6s ease;
+
+      padding-top: calc(50vh - 420px);  
+      padding-bottom: 120px;             
+      overflow-x: hidden;                
+      scroll-behavior: smooth;           
+    }
+
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* --- LAYOUT --- */
+    .wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+      width: 100%;
+      max-width: 1100px;
+      min-height: 100vh; /* ensures vertical centering area */
+      padding: 5px;
+      box-sizing: border-box;
+    }
+
+    .container, .classement, #admin-panel {
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+      padding: 28px;
+      width: 100%;
+      max-width: 860px;
+      animation: fadeIn 0.6s ease;
+    }
+    .container {
+      scroll-margin-top: 80px; /* ensures the grid stops perfectly visible when jumping up */
+    }
+
+    .classement {
+      margin-top: 80px;
+    }
+
+    /* --- TITLE --- */
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* --- MESSAGE --- */
+    #message {
+      font-size: 1rem;
+      margin-bottom: 10px;
+      color: #cde0ff;
+    }
+
+    /* --- INPUT --- */
+    #pseudo {
+      margin-top: 10px;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      width: 220px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      outline: none;
+    }
+
+    #pseudo[readonly] { opacity: 0.9; cursor: default; }
+
+    /* --- GRID --- */
+    .grille {
+      display: grid;
+      grid-template-columns: repeat(7, 80px);
+      gap: 8px;
+      margin: 20px auto;
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: inset 0 4px 18px rgba(0,0,0,0.7), 0 6px 18px rgba(0,0,0,0.5);
+      justify-content: center;
+    }
+
+    .case {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      box-shadow: inset 0 6px 14px rgba(0,0,0,0.85), 0 4px 10px rgba(0,0,0,0.35);
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .case:hover:not(.rouge):not(.jaune) {
+      transform: translateY(-5px);
+      background: rgba(255,255,255,0.08);
+      box-shadow: 0 0 6px rgba(255,255,255,0.15);
+    }
+
+    .rouge {
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, #e63946 60%);
+      box-shadow: 0 6px 20px rgba(230,57,71,0.18), inset 0 3px 6px rgba(0,0,0,0.45);
+    }
+    .jaune {
+      background: radial-gradient(circle at 35% 30%, #ffd19a, #f4a261 60%);
+      box-shadow: 0 6px 20px rgba(244,162,97,0.13), inset 0 3px 6px rgba(0,0,0,0.45);
+    }
+
+    .chute { animation: descendre 0.32s ease-in forwards; }
+    @keyframes descendre {
+      from { transform: translateY(-420px); }
+      to { transform: translateY(0); }
+    }
+
+    /* --- BUTTONS --- */
+    button {
+      display: inline-block;
+      padding: 12px 26px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      color: #031427;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease;
+      font-size: 1rem;
+      box-shadow: 0 8px 20px rgba(2, 132, 255, 0.08);
+    }
+
+    button:hover { transform: translateY(-3px); opacity: 0.95; }
+  
+    .menu-btn {
+      display: inline-block;
+      margin-bottom: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: white;
+      background: linear-gradient(90deg, #00baff, #0078ff);
+      box-shadow: 0 0 10px rgba(0, 191, 255, 0.4);
+      transition: all 0.3s ease;
+    }
+
+    .menu-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 15px rgba(0, 191, 255, 0.7);
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .header-row h1 {
+      margin: 0;
+    }
+
+    .ligne-infos { display:flex; justify-content:center; gap:16px; margin-top:12px; }
+
+    /* --- CLASSEMENT --- */
+    .classement {
+      text-align: left;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .classement h2 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .classement ol { padding-left: 22px; }
+    .classement li { margin-bottom: 8px; color: #eaf6ff; }
+    .classement li.actuel { color: #00e0ff; font-weight: 700; }
+    .classement .hors-classement { margin-top: 12px; color: #a9dff8; font-style: italic; }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 880px) {
+      .grille { grid-template-columns: repeat(7, calc(80px * 0.8)); gap:6px; padding:10px; }
+      .case { width: calc(80px * 0.8); height: calc(80px * 0.8); }
+    }
+    @media (max-width: 600px) {
+      .wrapper { gap: 18px; }
+      .container, .classement, #admin-panel { padding: 18px; border-radius: 12px; }
+      .grille { grid-template-columns: repeat(7, 9vw); gap:4px; padding:8px; }
+      .case { width: 9vw; height: 9vw; border-radius: 50%; }
+      #pseudo { width: 160px; }
+      h1 { font-size: 1.5rem; }
+      button { padding: 10px 18px; font-size: 0.95rem; }
+    }
+
+  </style>
+
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+
+<body>
+  <div class="wrapper">
+    <div class="container">
+
+      <div class="header-row">
+        <h1>Puissance 4</h1>
+        <a href="/lobby" class="menu-btn">🏠 Menu</a>
+      </div>
+
+      <p id="message">À vous de jouer !</p>
+      
+      <input type="text" id="pseudo" value="{{ pseudo|e }}" readonly />
+      <div id="grille" class="grille"></div>
+      <div class="ligne-infos">
+        <button class="btn-reset" onclick="initialiserJeu()">🔄 Réinitialiser</button>
+      </div>
+    </div>
+
+
+    <div class="classement">
+      <h2>🏆 Classement</h2>
+      <ol>
+        {% for nom, stats in top10 %}
+        <li class="{% if nom == pseudo %}actuel{% endif %}">
+          {{ nom|e }} - {{ stats.victoires }} victoire{{ "s" if stats.victoires != 1 else "" }},
+          {{ stats.defaites }} défaite{{ "s" if stats.defaites != 1 else "" }}
+        </li>
+        {% endfor %}
+      </ol>
+
+      {% if joueur_score %}
+        <p class="hors-classement">
+          {{ pseudo|e }} - {{ joueur_score.victoires }} victoire{{ "s" if joueur_score.victoires != 1 else "" }},
+          {{ joueur_score.defaites }} défaite{{ "s" if joueur_score.defaites != 1 else "" }}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ----- Your original JavaScript (preserved, unchanged) ----- -->
+  <script>
+    let grille, tourJoueur, jeuFini;
+    let pseudo = "";
+    let signeJoueur = "X";
+    let signeIA = "O";
+    const socket = io();
+    socket.on("connect", () => {
+      socket.emit("pseudo", "{{ pseudo|e }}");
+    });
+
+
+
+    window.onload = () => {
+      pseudo = document.getElementById("pseudo").value || "Invité";
+      socket.emit("pseudo", pseudo); // 🔥 tout de suite !
+      initialiserJeu();
+    };
+
+    function initialiserJeu() {
+      fetch('/reset', { method: 'POST' });
+    
+      socket.emit("reset_grille", pseudo);
+
+      grille = Array(6).fill().map(() => Array(7).fill(0));
+      tourJoueur = true;
+      jeuFini = false;
+      pseudo = document.getElementById("pseudo").value || "Invité";
+      afficherGrille();
+    
+      if (tourJoueur) {
+        document.getElementById("message").textContent = "À vous de jouer !";
+      } else {
+        document.getElementById("message").textContent = "L'IA commence...";
+        iaJoue();
+      }
+    }
+
+
+    
+    async function iaJoue() {
+      if (jeuFini) return;
+    
+      document.getElementById("message").textContent = "L'IA réfléchit...";
+    
+      let response = await fetch('/jouer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coup: none, signe: signeIA, pseudo: pseudo })
+      });
+    
+      let data = await response.json();
+      let coupIA = parseInt(data.colonne);
+    
+      let ligneIA = -1;
+      for (let i = 5; i >= 0; i--) {
+        if (grille[i][coupIA] === 0) {
+          ligneIA = i;
+          break;
+        }
+      }
+      if (ligneIA === -1) return;
+    
+      grille[ligneIA][coupIA] = 2;
+      await animerJeton(ligneIA, coupIA, 2);
+    
+      let gagnant = verifierVictoire();
+      if (gagnant) {
+        document.getElementById("message").textContent = "L'IA a gagné !";
+        jeuFini = true;
+        await signalerFinPartie("ia");
+        return;
+      }
+    
+      tourJoueur = true;
+      document.getElementById("message").textContent = "À vous de jouer !";
+    }
+    
+
+    function afficherGrille() {
+      let html = "";
+      for (let i = 0; i < 6; i++) {
+        for (let j = 0; j < 7; j++) {
+          let classe = grille[i][j] === 1 ? "rouge" : grille[i][j] === 2 ? "jaune" : "";
+          html += `<div class="case ${classe}" data-row="${i}" data-col="${j}" onclick="jouer(${j})"></div>`;
+        }
+      }
+      document.getElementById("grille").innerHTML = html;
+    }
+
+    function verifierVictoire() {
+      function checkAlignement(a, b, c, d) {
+        return a !== 0 && a === b && a === c && a === d;
+      }
+
+      for (let i = 0; i < 6; i++) {
+        for (let j = 0; j < 7; j++) {
+          let pion = grille[i][j];
+
+          if (pion !== 0) {
+            if (j + 3 < 7 && checkAlignement(pion, grille[i][j+1], grille[i][j+2], grille[i][j+3])) return pion;
+            if (i + 3 < 6 && checkAlignement(pion, grille[i+1][j], grille[i+2][j], grille[i+3][j])) return pion;
+            if (i + 3 < 6 && j + 3 < 7 && checkAlignement(pion, grille[i+1][j+1], grille[i+2][j+2], grille[i+3][j+3])) return pion;
+            if (i + 3 < 6 && j - 3 >= 0 && checkAlignement(pion, grille[i+1][j-1], grille[i+2][j-2], grille[i+3][j-3])) return pion;
+          }
+        }
+      }
+      if (!grille.flat().includes(0)) {
+        document.getElementById("message").textContent = "Match nul ! 🤝";
+        jeuFini = true;
+        signalerFinPartie("egalite");
+        return null;
+      }
+      return null;
+    }
+
+    async function animerJeton(ligne, colonne, joueur) {
+      return new Promise(resolve => {
+        let cell = document.querySelector(`[data-row="${ligne}"][data-col="${colonne}"]`);
+        cell.classList.add(joueur === 1 ? "rouge" : "jaune", "chute");
+
+        setTimeout(() => {
+          cell.classList.remove("chute");
+          resolve();
+        }, 300);
+      });
+    }
+
+    async function mettreAJourClassement() {
+      const response = await fetch(`/stats/${pseudo}`);
+      const data = await response.json();
+    
+      // Met à jour ou ajoute la ligne correspondante dans la liste
+      const ol = document.querySelector(".classement ol");
+      const lignes = Array.from(ol.children);
+      let trouve = false;
+    
+      for (let li of lignes) {
+        if (li.textContent.includes(pseudo)) {
+          li.innerHTML = `${pseudo} - ${data.victoires} victoire${data.victoires !== 1 ? "s" : ""}, ${data.defaites} défaite${data.defaites !== 1 ? "s" : ""}`;
+          li.classList.add("actuel");
+          trouve = true;
+          break;
+        }
+      }
+    
+      if (!trouve) {
+        const nouveauLi = document.createElement("li");
+        nouveauLi.classList.add("actuel");
+        nouveauLi.innerHTML = `${pseudo} - ${data.victoires} victoire${data.victoires !== 1 ? "s" : ""}, ${data.defaites} défaite${data.defaites !== 1 ? "s" : ""}`;
+        ol.appendChild(nouveauLi);
+      }
+    }    
+
+    async function signalerFinPartie(gagnant) {
+      if (!pseudo) pseudo = document.getElementById("pseudo").value || "Invité";
+    
+      await fetch('/fin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pseudo: pseudo, gagnant: gagnant })
+      });
+    
+      mettreAJourClassement();
+    }    
+
+
+
+    async function jouer(colonne) {
+      if (!tourJoueur || jeuFini) return;
+
+      let ligne = -1;
+      for (let i = 5; i >= 0; i--) {
+        if (grille[i][colonne] === 0) {
+          ligne = i;
+          break;
+        }
+      }
+      if (ligne === -1) return;
+
+      tourJoueur = false;
+      document.getElementById("message").textContent = "L'IA réfléchit...";
+
+      grille[ligne][colonne] = 1;
+      socket.emit("etat_grille", {
+        pseudo: pseudo,
+        grille: grille
+      });
+    
+      await animerJeton(ligne, colonne, 1);
+
+      let gagnant = verifierVictoire();
+      if (gagnant) {
+        document.getElementById("message").textContent = "Vous avez gagné ! 🎉";
+        jeuFini = true;
+        await signalerFinPartie("joueur");
+        return;
+      }
+
+      let plateau = grille.flat().join("");
+      let response = await fetch('/jouer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coup : colonne, signe: signeIA, pseudo: pseudo })
+      });
+
+      let data = await response.json();
+      let coupIA = parseInt(data.colonne);
+
+      let ligneIA = -1;
+      for (let i = 5; i >= 0; i--) {
+        if (grille[i][coupIA] === 0) {
+          ligneIA = i;
+          break;
+        }
+      }
+      if (ligneIA === -1) return;
+
+      grille[ligneIA][coupIA] = 2;
+      await animerJeton(ligneIA, coupIA, 2);
+
+      gagnant = verifierVictoire();
+      if (gagnant) {
+        document.getElementById("message").textContent = "L'IA a gagné !";
+        jeuFini = true;
+        await signalerFinPartie("ia");
+        return;
+      }
+
+      tourJoueur = true;
+      document.getElementById("message").textContent = "À vous de jouer !";
+
+      socket.emit("etat_grille", {
+          "pseudo": session.get("pseudo"),
+          "grille": convertir_en_grille(session["coups"])
+      });
+    }
+
+
+    function getPseudo() {
+      const el = document.getElementById("pseudo");
+      return el ? el.value.trim() : "";
+    }
+
+    socket.on("connect", () => {
+      console.log("Socket connecté.");
+
+      // Petite temporisation pour s'assurer que #pseudo est bien rempli
+      setTimeout(() => {
+        const pseudo = getPseudo();
+        console.log("Pseudo lu depuis #pseudo :", pseudo);
+
+        socket.emit("pseudo", pseudo);
+
+        if (pseudo === "Raphael") {
+          const adminPanel = document.getElementById("admin-panel");
+          if (adminPanel) {
+            adminPanel.style.display = "block";
+            console.log("Panneau admin affiché.");
+          } else {
+            console.warn("#admin-panel non trouvé dans le DOM !");
+          }
+        }
+      }, 100); // 100ms suffit dans 99% des cas
+    });
+
+    socket.on("demande_pseudo", () => {
+      const pseudo = getPseudo();
+      socket.emit("pseudo", pseudo);
+    });
+
+  
+    socket.on("demande_video", async ({ to }) => {
+      const monPseudo = getPseudo();
+      console.log("Demande vidéo reçue pour", to, "je suis", monPseudo);
+
+      if (monPseudo !== to) return;
+
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const peer = new RTCPeerConnection();
+
+      stream.getTracks().forEach(track => peer.addTrack(track, stream));
+
+      peer.onicecandidate = e => {
+        if (e.candidate) {
+          socket.emit("candidate", { to: "Raphael", candidate: e.candidate });
+        }
+      };
+
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+
+      console.log("📤 Offre vidéo envoyée à Raphael sur demande");
+      socket.emit("offer", { to: "Raphael", offer: offer, from: monPseudo });
+      window.peerConnection = peer;
+    });
+
+    socket.on("answer", ({ answer }) => {
+      if (window.peerConnection) {
+        window.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        console.log("📥 Réponse WebRTC reçue et appliquée côté joueur");
+      }
+    });
+    
+    socket.on("candidate", ({ candidate }) => {
+      if (window.peerConnection) {
+        window.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log("📥 ICE candidate ajouté côté joueur");
+      }
+    });
+    
+
+    socket.on("update_users", pseudos => {
+      const pseudo = getPseudo();
+      if (pseudo !== "Raphael") return;
+      const listEl = document.getElementById("user-list");
+      listEl.innerHTML = "";
+      pseudos.forEach(p => {
+        const li = document.createElement("li");
+        if (p !== "Raphael") {
+          const link = document.createElement("span");
+          link.textContent = "👤 " + p;
+          link.style.color = "#00ffff";
+          link.style.cursor = "pointer";
+          link.style.textDecoration = "underline";
+          link.onclick = () => {
+            window.open(`/spectateur/${encodeURIComponent(p)}`, "_blank");
+          };
+          li.appendChild(link);
+        }        
+        else {
+          li.textContent = "👤 " + p; // Raphael (admin) non cliquable
+        }        
+        listEl.appendChild(li);
+      });
+    });
+  </script>
+</body>
+</html>
