@@ -1,2 +1,8 @@
-flask
-gunicorn
+Flask==3.0.2
+Flask-SocketIO==5.3.6
+eventlet==0.36.1
+Werkzeug==3.0.4
+itsdangerous==2.2.0
+Jinja2==3.1.4
+python-socketio==5.11.3
+python-engineio==4.11.1
