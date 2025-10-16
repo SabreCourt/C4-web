@@ -119,10 +119,13 @@ def logout():
 
 # Démarrage du solver en mode interactif
 from subprocess import Popen, PIPE
-import os
+import os, stat
 
 # Chemin absolu ou relatif vers le binaire Linux
 solver_path = os.path.join(os.path.dirname(__file__), "c4solver")
+
+if not os.access(solver_path, os.X_OK):
+    os.chmod(solver_path, os.stat(solver_path).st_mode | stat.S_IEXEC)
 
 solver_process = Popen(
     [solver_path, "-a"],
