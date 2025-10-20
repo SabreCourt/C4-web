@@ -136,6 +136,22 @@ solver_path = os.path.join(os.path.dirname(__file__), solver_name)
 if not sys.platform.startswith("win"):
     os.chmod(solver_path, os.stat(solver_path).st_mode | stat.S_IEXEC)
 
+
+# --- Test solver avant le lancement permanent ---
+print("=== TEST SOLVER START ===", flush=True)
+try:
+    import subprocess
+    out = subprocess.check_output([solver_path, "-a"], stderr=subprocess.STDOUT, text=True, timeout=2)
+    print("Solver test OK — output:", out[:200], flush=True)
+except subprocess.CalledProcessError as e:
+    print("Solver test failed with return code:", e.returncode, flush=True)
+    print("Solver stderr/output:", e.output, flush=True)
+except Exception as e:
+    print("Solver test failed:", repr(e), flush=True)
+print("=== TEST SOLVER END ===", flush=True)
+# ------------------------------------------------
+
+
 # Lancer le processus
 solver_process = Popen(
     [solver_path, "-a"],
