@@ -286,7 +286,6 @@
     socket.on("connect", () => {
       socket.emit("pseudo", "{{ pseudo|e }}");
     });
-    const socket = io({ transports: ['websocket'], upgrade: false });
 
 
 
