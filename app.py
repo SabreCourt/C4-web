@@ -15,6 +15,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from flask import redirect, url_for, session
 
+sys.stdout.reconfigure(line_buffering=True)
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
