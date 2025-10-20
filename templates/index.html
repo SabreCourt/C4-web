@@ -232,6 +232,16 @@
       button { padding: 10px 18px; font-size: 0.95rem; }
     }
 
+    .case.gagnant {
+      animation: clignote 0.5s infinite alternate;
+      box-shadow: 0 0 15px 5px gold;
+    }
+
+    @keyframes clignote {
+      from { transform: scale(1); filter: brightness(1); }
+      to { transform: scale(1.1); filter: brightness(1.5); }
+    }
+
   </style>
 
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
@@ -343,14 +353,22 @@
       grille[ligneIA][coupIA] = 2;
       await animerJeton(ligneIA, coupIA, 2);
     
-      let gagnant = verifierVictoire();
-      if (gagnant) {
-        document.getElementById("message").textContent = "L'IA a gagné !";
-        jeuFini = true;
-        await signalerFinPartie("ia");
+      let resultat = verifierVictoire();
+      if (resultat.gagnant) {
+        if (resultat.gagnant === 1) {
+          document.getElementById("message").textContent = "Vous avez gagné ! 🎉";
+          surlignerVictoire(resultat.coords);
+          jeuFini = true;
+          await signalerFinPartie("joueur");
+        } else if (resultat.gagnant === 2) {
+          document.getElementById("message").textContent = "L'IA a gagné ! 🤖";
+          surlignerVictoire(resultat.coords);
+          jeuFini = true;
+          await signalerFinPartie("ia");
+        }
         return;
       }
-    
+
       tourJoueur = true;
       document.getElementById("message").textContent = "À vous de jouer !";
     }
@@ -372,26 +390,48 @@
         return a !== 0 && a === b && a === c && a === d;
       }
 
+      // 🔥 On va stocker les positions gagnantes
+      let coords = [];
+
       for (let i = 0; i < 6; i++) {
         for (let j = 0; j < 7; j++) {
           let pion = grille[i][j];
 
           if (pion !== 0) {
-            if (j + 3 < 7 && checkAlignement(pion, grille[i][j+1], grille[i][j+2], grille[i][j+3])) return pion;
-            if (i + 3 < 6 && checkAlignement(pion, grille[i+1][j], grille[i+2][j], grille[i+3][j])) return pion;
-            if (i + 3 < 6 && j + 3 < 7 && checkAlignement(pion, grille[i+1][j+1], grille[i+2][j+2], grille[i+3][j+3])) return pion;
-            if (i + 3 < 6 && j - 3 >= 0 && checkAlignement(pion, grille[i+1][j-1], grille[i+2][j-2], grille[i+3][j-3])) return pion;
+            // Horizontale
+            if (j + 3 < 7 && checkAlignement(pion, grille[i][j+1], grille[i][j+2], grille[i][j+3])) {
+              coords = [[i,j],[i,j+1],[i,j+2],[i,j+3]];
+              return { gagnant: pion, coords };
+            }
+            // Verticale
+            if (i + 3 < 6 && checkAlignement(pion, grille[i+1][j], grille[i+2][j], grille[i+3][j])) {
+              coords = [[i,j],[i+1,j],[i+2,j],[i+3,j]];
+              return { gagnant: pion, coords };
+            }
+            // Diagonale ↘
+            if (i + 3 < 6 && j + 3 < 7 && checkAlignement(pion, grille[i+1][j+1], grille[i+2][j+2], grille[i+3][j+3])) {
+              coords = [[i,j],[i+1,j+1],[i+2,j+2],[i+3,j+3]];
+              return { gagnant: pion, coords };
+            }
+            // Diagonale ↙
+            if (i + 3 < 6 && j - 3 >= 0 && checkAlignement(pion, grille[i+1][j-1], grille[i+2][j-2], grille[i+3][j-3])) {
+              coords = [[i,j],[i+1,j-1],[i+2,j-2],[i+3,j-3]];
+              return { gagnant: pion, coords };
+            }
           }
         }
       }
-      if (!grille.flat().includes(0)) {
-        document.getElementById("message").textContent = "Match nul ! 🤝";
-        jeuFini = true;
-        signalerFinPartie("egalite");
-        return null;
-      }
-      return null;
-    }
+
+  if (!grille.flat().includes(0)) {
+    document.getElementById("message").textContent = "Match nul ! 🤝";
+    jeuFini = true;
+    signalerFinPartie("egalite");
+    return { gagnant: null, coords: [] };
+  }
+
+  return { gagnant: null, coords: [] };
+}
+
 
     async function animerJeton(ligne, colonne, joueur) {
       return new Promise(resolve => {
@@ -404,6 +444,16 @@
         }, 300);
       });
     }
+
+    function surlignerVictoire(coords) {
+      coords.forEach(([i, j]) => {
+        const cell = document.querySelector(`[data-row="${i}"][data-col="${j}"]`);
+        if (cell) {
+          cell.classList.add("gagnant");
+        }
+      });
+    }
+
 
     async function mettreAJourClassement() {
       const response = await fetch(`/stats/${pseudo}`);
@@ -468,13 +518,22 @@
     
       await animerJeton(ligne, colonne, 1);
 
-      let gagnant = verifierVictoire();
-      if (gagnant) {
-        document.getElementById("message").textContent = "Vous avez gagné ! 🎉";
-        jeuFini = true;
-        await signalerFinPartie("joueur");
+      let resultat = verifierVictoire();
+      if (resultat.gagnant) {
+        if (resultat.gagnant === 1) {
+          document.getElementById("message").textContent = "Vous avez gagné ! 🎉";
+          surlignerVictoire(resultat.coords);
+          jeuFini = true;
+          await signalerFinPartie("joueur");
+        } else if (resultat.gagnant === 2) {
+          document.getElementById("message").textContent = "L'IA a gagné ! 🤖";
+          surlignerVictoire(resultat.coords);
+          jeuFini = true;
+          await signalerFinPartie("ia");
+        }
         return;
       }
+
 
       let plateau = grille.flat().join("");
       let response = await fetch('/jouer', {
