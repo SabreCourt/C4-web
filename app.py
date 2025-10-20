@@ -5,6 +5,9 @@ import os
 import json
 import time
 import threading
+import sys
+import stat
+
 
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -116,17 +119,22 @@ def logout():
     session.pop("username", None)
     return jsonify({"ok": True})
 
+# Choix du bon binaire selon le système
+if sys.platform.startswith("win"):
+    solver_name = "c4solver.exe"
+    print("Running on Windows")
+else:
+    solver_name = "c4solver"
+    print("Running on Linux/macOS")
 
-# Démarrage du solver en mode interactif
-from subprocess import Popen, PIPE
-import os, stat
+# Chemin complet vers le binaire
+solver_path = os.path.join(os.path.dirname(__file__), solver_name)
 
-# Chemin absolu ou relatif vers le binaire Linux
-solver_path = os.path.join(os.path.dirname(__file__), "c4solver")
-
-if not os.access(solver_path, os.X_OK):
+# Sur Linux / macOS : s'assurer que le fichier est exécutable
+if not sys.platform.startswith("win"):
     os.chmod(solver_path, os.stat(solver_path).st_mode | stat.S_IEXEC)
 
+# Lancer le processus
 solver_process = Popen(
     [solver_path, "-a"],
     stdin=PIPE,
@@ -243,6 +251,7 @@ def convertir_plateau(plateau):
 
 def envoyer_sequence(sequence):
     global solver_process, solver_lock
+    print("Envoyé au solver :", sequence)
     with solver_lock:
         if solver_process.poll() is not None:
             raise Exception("Le solver s'est arrêté.")
