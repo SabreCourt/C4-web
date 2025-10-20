@@ -286,6 +286,8 @@
     socket.on("connect", () => {
       socket.emit("pseudo", "{{ pseudo|e }}");
     });
+    const socket = io({ transports: ['websocket'], upgrade: false });
+
 
 
 
@@ -324,7 +326,7 @@
       let response = await fetch('/jouer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coup: none, signe: signeIA, pseudo: pseudo })
+        body: JSON.stringify({ coup: null, signe: signeIA, pseudo: pseudo })
       });
     
       let data = await response.json();
