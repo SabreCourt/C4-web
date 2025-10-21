@@ -11,6 +11,10 @@
     "victoires": 0,
     "defaites": 7
   },
+  "admin": {
+    "victoires": 1,
+    "defaites": 8
+  },
   "paul.benoit@student-cs.fr": {
     "victoires": 0,
     "defaites": 14

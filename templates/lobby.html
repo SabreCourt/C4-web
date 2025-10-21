@@ -74,8 +74,8 @@
     <form method="GET" action="/jeu">
       <button type="submit" class="btn">🎮 Jouer contre l'IA</button>
     </form>
-    <form>
-      <button type="button" class="btn" disabled>🕹️ Jouer en ligne (bientôt)</button>
+    <form method="GET" action="/lobby_multi">
+      <button type="submit" class="btn">🕹️ Jouer en ligne</button>
     </form>
 
     {% if pseudo.lower() == 'admin' %}

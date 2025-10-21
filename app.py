@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template, send_from_directory, make_response, redirect, url_for, session
 from subprocess import Popen, PIPE
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import os
 import json
 import time
@@ -21,7 +21,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "pseudo" not in session:
-            return redirect(url_for("accueil"))
+            return redirect(url_for("connexion"))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -124,10 +124,8 @@ def logout():
 # Choix du bon binaire selon le système
 if sys.platform.startswith("win"):
     solver_name = "c4solver.exe"
-    print("Running on Windows")
 else:
     solver_name = "c4solver"
-    print("Running on Linux/macOS")
 
 # Chemin complet vers le binaire
 solver_path = os.path.join(os.path.dirname(__file__), solver_name)
@@ -135,21 +133,6 @@ solver_path = os.path.join(os.path.dirname(__file__), solver_name)
 # Sur Linux / macOS : s'assurer que le fichier est exécutable
 if not sys.platform.startswith("win"):
     os.chmod(solver_path, os.stat(solver_path).st_mode | stat.S_IEXEC)
-
-
-# --- Test solver avant le lancement permanent ---
-print("=== TEST SOLVER START ===", flush=True)
-try:
-    import subprocess
-    out = subprocess.check_output([solver_path, "-a"], stderr=subprocess.STDOUT, text=True, timeout=2)
-    print("Solver test OK — output:", out[:200], flush=True)
-except subprocess.CalledProcessError as e:
-    print("Solver test failed with return code:", e.returncode, flush=True)
-    print("Solver stderr/output:", e.output, flush=True)
-except Exception as e:
-    print("Solver test failed:", repr(e), flush=True)
-print("=== TEST SOLVER END ===", flush=True)
-# ------------------------------------------------
 
 
 # Lancer le processus
@@ -200,7 +183,7 @@ def set_pseudo():
 @login_required
 def jeu():
     if 'pseudo' not in session:
-        return redirect(url_for('accueil'))
+        return redirect(url_for('connexion'))
 
     session['coups'] = ""
     pseudo_courant = session['pseudo']
@@ -236,8 +219,8 @@ def reset_partie():
 
 
 @app.route('/')
-def accueil():
-    response = make_response(render_template('accueil.html'))
+def connexion():
+    response = make_response(render_template('connexion.html'))
     response.headers['ngrok-skip-browser-warning'] = 'true'
     return response
 
@@ -470,28 +453,6 @@ spectateurs = {}
 def spectateur(pseudo):
     return render_template('spectateur.html', joueur=pseudo)
 
-@socketio.on("offer")
-def handle_offer(data):
-    to = data["to"]
-    print(f"🚀 Offre reçue de {data['from']} pour {data['to']}")
-
-    for sid, pseudo in connected_users.items():
-        if pseudo == to:
-            socketio.emit("offer", data, room=sid)
-
-@socketio.on("answer")
-def handle_answer(data):
-    to = data["to"]
-    for sid, pseudo in connected_users.items():
-        if pseudo == to:
-            socketio.emit("answer", data, room=sid)
-
-@socketio.on("candidate")
-def handle_candidate(data):
-    to = data["to"]
-    for sid, pseudo in connected_users.items():
-        if pseudo == to:
-            socketio.emit("candidate", data, room=sid)
 
 @socketio.on("demande_video")
 def handle_demande_video(data):
