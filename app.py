@@ -117,7 +117,7 @@ def hash_password(password: str) -> str:
 
 
 # --- Jeu du pendu ---
-MAX_PENDU_ATTEMPTS = 8
+MAX_PENDU_ATTEMPTS = 10
 PENDU_FOLDER = os.path.join(app.root_path, "templates", "pendu")
 PENDU_WORD_SANITIZE_REGEX = re.compile(r"[^A-Za-zÀ-ÖØ-öø-ÿ' -]")
 PENDU_DEFAULT_WORDS = [

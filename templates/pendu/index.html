@@ -62,8 +62,12 @@
 
     .header h1 {
       margin: 0;
-      font-size: 1.75rem;
-      letter-spacing: 0.05em;
+      font-size: 1.85rem;
+      letter-spacing: 0.08em;
+      text-transform: lowercase;
+      background: linear-gradient(90deg, #1e90ff, #00c6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .score, .attempts {
@@ -149,40 +153,143 @@
       text-transform: uppercase;
     }
 
+    .validate-gradient {
+      background: linear-gradient(90deg, #1e90ff, #00c6ff);
+      color: #031527;
+      box-shadow: 0 14px 24px rgba(30, 144, 255, 0.25);
+      border: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .validate-gradient:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 28px rgba(30, 144, 255, 0.35);
+    }
+
+    .validate-gradient:focus-visible {
+      outline: 3px solid rgba(30, 144, 255, 0.45);
+      outline-offset: 2px;
+    }
+
+    .reset-gradient {
+      background: linear-gradient(90deg, #ff5f6d, #ffc371);
+      color: #1b1b1b;
+      box-shadow: 0 14px 24px rgba(255, 95, 109, 0.25);
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      padding: 12px 24px;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+
+    .reset-gradient:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 28px rgba(255, 95, 109, 0.35);
+      opacity: 0.95;
+    }
+
+    .reset-gradient:focus-visible {
+      outline: 3px solid rgba(255, 95, 109, 0.45);
+      outline-offset: 2px;
+    }
+
+
     .input-group button {
       flex: 0 0 auto;
       white-space: nowrap;
-      padding: 12px 24px;
+      padding: 12px 26px;
       border-radius: 12px;
       border: none;
       font-weight: 700;
       font-size: 1rem;
       cursor: pointer;
-      background: linear-gradient(135deg, var(--primary), #0ea5e9);
-      color: #031527;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .input-group button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 20px rgba(56, 189, 248, 0.3);
     }
 
     .new-game {
       align-self: flex-start;
-      padding: 12px 24px;
+      padding: 12px 28px;
       border-radius: 12px;
       border: none;
       font-weight: 700;
       cursor: pointer;
-      background: linear-gradient(135deg, var(--accent), #fb923c);
-      color: #1f2937;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .new-game:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 20px rgba(249, 115, 22, 0.35);
+    .letters-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .letters-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 14px;
+      min-height: 66px;
+      border-radius: 16px;
+      background: rgba(148, 163, 184, 0.08);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .letter-pill {
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: rgba(30, 64, 175, 0.25);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      box-shadow: inset 0 1px 4px rgba(15, 23, 42, 0.6);
+    }
+
+    .letter-pill.correct {
+      background: rgba(34, 197, 94, 0.18);
+      border-color: rgba(74, 222, 128, 0.45);
+      color: #bbf7d0;
+    }
+
+    .letter-pill.incorrect {
+      background: rgba(248, 113, 113, 0.18);
+      border-color: rgba(248, 113, 113, 0.45);
+      color: #fecaca;
+    }
+
+    .message {
+      margin-top: 18px;
+      padding: 16px 20px;
+      border-radius: 18px;
+      font-weight: 600;
+      text-align: center;
+      background: rgba(148, 163, 184, 0.12);
+      border: 1px solid transparent;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: opacity 0.25s ease, transform 0.25s ease, border 0.25s ease;
+    }
+
+    .message.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .message--success {
+      background: linear-gradient(135deg, rgba(74, 222, 128, 0.18), rgba(22, 163, 74, 0.12));
+      border-color: rgba(74, 222, 128, 0.45);
+      color: #bbf7d0;
+      box-shadow: 0 12px 26px rgba(34, 197, 94, 0.18);
+    }
+
+    .message--danger {
+      background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(239, 68, 68, 0.12));
+      border-color: rgba(248, 113, 113, 0.45);
+      color: #fecaca;
+      box-shadow: 0 12px 26px rgba(239, 68, 68, 0.18);
+    }
+
+    .message--info {
+      border-color: rgba(148, 163, 184, 0.35);
+      color: #e2e8f0;
     }
 
     .footer-links {
@@ -222,7 +329,7 @@
   <div class="game-wrapper">
     <div class="column">
       <div class="header">
-        <h1>Jeu du Pendu</h1>
+        <h1>jeu du pendu</h1>
         <div class="score">Série : <span id="pendu-score">0</span></div>
         <div class="attempts">Essais restants : <span id="pendu-attempts">0</span></div>
       </div>
@@ -240,11 +347,11 @@
         <form id="guess-form" autocomplete="off">
           <div class="input-group">
             <input id="guess-input" name="letter" maxlength="1" autocomplete="off" autofocus required />
-            <button type="submit">Valider</button>
+            <button type="submit" class="validate-gradient">Valider</button>
           </div>
         </form>
         <p class="message" id="pendu-message"></p>
-        <button class="new-game" id="new-game" hidden>Nouvelle partie</button>
+        <button class="new-game reset-gradient" id="new-game" hidden>Nouvelle partie</button>
       </div>
 
       <!-- 🎨 SVG MOVED HERE (below input) -->
@@ -283,6 +390,21 @@
     const statusElement = document.getElementById('pendu-status');
     const hangmanParts = document.querySelectorAll('.hangman-part');
 
+    function updateMessage(content, status) {
+      messageElement.textContent = content || '';
+      messageElement.className = 'message';
+      if (!content) return;
+
+      messageElement.classList.add('visible');
+      if (status === 'won') {
+        messageElement.classList.add('message--success');
+      } else if (status === 'lost') {
+        messageElement.classList.add('message--danger');
+      } else {
+        messageElement.classList.add('message--info');
+      }
+    }
+
     // 🎯 total parts = 10 → we allow 10 attempts
     function updateHangmanDrawing(attemptsLeft, maxAttempts) {
       const errors = maxAttempts - attemptsLeft;
@@ -316,7 +438,15 @@
         document.querySelector('.hangman-svg').classList.remove('lost');
       }
 
-      messageElement.textContent = extraMessage || '';
+      let message = extraMessage || '';
+      const revealedWord = state.solution || state.masked_word.replace(/\s/g, '');
+      if (state.status === 'won') {
+        message = `Bravo ! Tu as trouvé ${revealedWord} !`;
+      } else if (state.status === 'lost') {
+        message = `Raté... Le mot était ${revealedWord}.`;
+      }
+
+      updateMessage(message, state.status);
       statusElement.textContent = state.status === 'won' ? '🎉 Victoire' : state.status === 'lost' ? '💥 Défaite' : '';
       newGameButton.hidden = state.status !== 'won' && state.status !== 'lost';
     }
