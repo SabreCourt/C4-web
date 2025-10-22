@@ -85,23 +85,54 @@ def init_db():
             );
             """
         )
+        version = 1
         cursor.execute("PRAGMA user_version = 1")
+
+    # Version 2 introduces the user_stats table storing gameplay statistics.
+    if version < 2:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_stats (
+                user_id INTEGER PRIMARY KEY,
+                best_pendu_streak INTEGER DEFAULT 0,
+                pendu_current_streak INTEGER DEFAULT 0,
+                c4_ai_wins INTEGER DEFAULT 0,
+                c4_ai_losses INTEGER DEFAULT 0,
+                c4_online_elo INTEGER DEFAULT 1200,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
+            );
+            """
+        )
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO user_stats (user_id)
+            SELECT id FROM user
+            """
+        )
+        cursor.execute("PRAGMA user_version = 2")
+        version = 2
     else:
         cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='user'"
+            """
+            CREATE TABLE IF NOT EXISTS user_stats (
+                user_id INTEGER PRIMARY KEY,
+                best_pendu_streak INTEGER DEFAULT 0,
+                pendu_current_streak INTEGER DEFAULT 0,
+                c4_ai_wins INTEGER DEFAULT 0,
+                c4_ai_losses INTEGER DEFAULT 0,
+                c4_online_elo INTEGER DEFAULT 1200,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
+            );
+            """
         )
-        if not cursor.fetchone():
-            cursor.execute(
-                """
-                CREATE TABLE user (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    pseudo TEXT UNIQUE NOT NULL,
-                    email TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                );
-                """
-            )
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO user_stats (user_id)
+            SELECT id FROM user
+            """
+        )
 
     conn.commit()
     conn.close()
@@ -116,6 +147,163 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
+# --- User statistics helpers ---
+
+def get_user_id(pseudo: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM user WHERE pseudo = ?", (pseudo,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def ensure_user_stats(pseudo: str):
+    user_id = get_user_id(pseudo)
+    if user_id is None:
+        return None
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT OR IGNORE INTO user_stats (user_id)
+        VALUES (?)
+        """,
+        (user_id,),
+    )
+    conn.commit()
+    cursor.execute(
+        """
+        SELECT best_pendu_streak, pendu_current_streak, c4_ai_wins, c4_ai_losses, c4_online_elo
+        FROM user_stats
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return {
+            "best_pendu_streak": 0,
+            "pendu_current_streak": 0,
+            "c4_ai_wins": 0,
+            "c4_ai_losses": 0,
+            "c4_online_elo": 1200,
+        }
+    return {
+        "best_pendu_streak": row[0],
+        "pendu_current_streak": row[1],
+        "c4_ai_wins": row[2],
+        "c4_ai_losses": row[3],
+        "c4_online_elo": row[4],
+    }
+
+
+def update_user_stats(pseudo: str, **fields):
+    if not fields:
+        return
+    user_id = get_user_id(pseudo)
+    if user_id is None:
+        return
+    ensure_user_stats(pseudo)
+    assignments = ", ".join(f"{key} = ?" for key in fields.keys())
+    values = list(fields.values())
+    values.append(user_id)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        f"UPDATE user_stats SET {assignments}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+        values,
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_user_elo(pseudo: str) -> int:
+    stats = ensure_user_stats(pseudo)
+    return stats.get("c4_online_elo", 1200) if stats else 1200
+
+
+def update_pendu_streak(pseudo: str, won: bool):
+    stats = ensure_user_stats(pseudo)
+    if not stats:
+        return
+    current = stats.get("pendu_current_streak", 0)
+    best = stats.get("best_pendu_streak", 0)
+    if won:
+        current += 1
+        if current > best:
+            best = current
+    else:
+        current = 0
+    update_user_stats(
+        pseudo,
+        pendu_current_streak=current,
+        best_pendu_streak=best,
+    )
+
+
+def adjust_c4_ai_score(pseudo: str, victory: bool):
+    stats = ensure_user_stats(pseudo)
+    if not stats:
+        return
+    wins = stats.get("c4_ai_wins", 0)
+    losses = stats.get("c4_ai_losses", 0)
+    if victory:
+        wins += 1
+    else:
+        losses += 1
+    update_user_stats(pseudo, c4_ai_wins=wins, c4_ai_losses=losses)
+
+
+ELO_K_FACTOR = 32
+
+
+def apply_multiplayer_result(room, *, winner=None, loser=None, draw=False, reason="normal"):
+    players = list(room.get("players", {}).keys())
+    if len(players) < 2:
+        return {"ratings": {}}
+
+    ratings_before = {}
+    for pseudo in players:
+        info = room["players"].setdefault(pseudo, {})
+        rating = info.get("elo")
+        if rating is None:
+            rating = get_user_elo(pseudo)
+            info["elo"] = rating
+        ratings_before[pseudo] = rating
+
+    if draw:
+        scores = {pseudo: 0.5 for pseudo in players}
+    else:
+        scores = {pseudo: (1.0 if pseudo == winner else 0.0) for pseudo in players}
+
+    rating_updates = {}
+    for pseudo in players:
+        opponent = [p for p in players if p != pseudo][0]
+        expected = 1 / (1 + 10 ** ((ratings_before[opponent] - ratings_before[pseudo]) / 400))
+        delta = round(ELO_K_FACTOR * (scores[pseudo] - expected))
+        new_rating = ratings_before[pseudo] + delta
+        rating_updates[pseudo] = {
+            "before": ratings_before[pseudo],
+            "after": new_rating,
+            "delta": delta,
+        }
+
+    for pseudo, data in rating_updates.items():
+        room["players"][pseudo]["elo"] = data["after"]
+        update_user_stats(pseudo, c4_online_elo=data["after"])
+
+    return {
+        "ratings": rating_updates,
+        "winner": winner,
+        "loser": loser,
+        "draw": draw,
+        "reason": reason,
+    }
+
+
+# --- Jeu du pendu ---
 # --- Jeu du pendu ---
 MAX_PENDU_ATTEMPTS = 10
 PENDU_FOLDER = os.path.join(app.root_path, "templates", "pendu")
@@ -228,6 +416,7 @@ def serialize_pendu_state(state):
 
 def process_pendu_guess(letter):
     state = get_pendu_state()
+    pseudo = session.get("pseudo")
 
     if state["status"] != "playing":
         return state, "La partie est terminée. Lancez une nouvelle partie pour continuer."
@@ -246,11 +435,15 @@ def process_pendu_guess(letter):
         if state["remaining_attempts"] == 0:
             state["status"] = "lost"
             session["pendu_score"] = 0
+            if pseudo:
+                update_pendu_streak(pseudo, won=False)
     else:
         word_letters = {char for char in state["word"] if char.isalpha()}
         if word_letters.issubset(set(state["guessed_letters"])):
             state["status"] = "won"
             session["pendu_score"] = session.get("pendu_score", 0) + 1
+            if pseudo:
+                update_pendu_streak(pseudo, won=True)
 
     session.modified = True
     return state, None
@@ -275,6 +468,7 @@ def create_user(pseudo: str, email: str, password: str):
             (pseudo, email, password_hash),
         )
         conn.commit()
+        ensure_user_stats(pseudo)
         return True, None
     except Exception as e:
         return False, str(e)
@@ -535,6 +729,22 @@ def menu():
     return render_template("menu.html", pseudo=session["pseudo"])
 
 
+@app.route("/profile")
+@login_required
+def profile():
+    pseudo = session["pseudo"]
+    stats = ensure_user_stats(pseudo) or {}
+    return render_template(
+        "profile.html",
+        pseudo=pseudo,
+        best_pendu_streak=stats.get("best_pendu_streak", 0),
+        current_pendu_streak=stats.get("pendu_current_streak", 0),
+        c4_ai_wins=stats.get("c4_ai_wins", 0),
+        c4_ai_losses=stats.get("c4_ai_losses", 0),
+        c4_online_elo=stats.get("c4_online_elo", 1200),
+    )
+
+
 @app.route("/pendu")
 @login_required
 def pendu():
@@ -606,6 +816,62 @@ def check_victory(board, row, col, token):
 
 def board_full(board):
     return all(cell != 0 for row in board for cell in row)
+
+
+def forfeit_room(room_id, loser, departing_sid=None):
+    with rooms_lock:
+        room = rooms_multi.get(room_id)
+        if not room or loser not in room["players"]:
+            return False
+        opponent = next((p for p in room["players"] if p != loser), None)
+        board_copy = clone_board(room["board"])
+        result_info = None
+        if opponent:
+            result_info = apply_multiplayer_result(
+                room,
+                winner=opponent,
+                loser=loser,
+                draw=False,
+                reason="forfeit",
+            )
+        room["status"] = "finished"
+        room["turn"] = None
+        room["reset_votes"] = set()
+        room["reset_context"] = "rematch"
+        players_snapshot = {
+            name: {
+                "sid": info.get("sid"),
+                "color": info.get("color"),
+                "elo": info.get("elo"),
+            }
+            for name, info in room["players"].items()
+        }
+        rooms_multi.pop(room_id, None)
+
+    payload = {
+        "board": board_copy,
+        "column": None,
+        "row": None,
+        "played_by": None,
+        "color": None,
+        "next_turn": None,
+        "winner": opponent,
+        "draw": False,
+        "forfeit": loser,
+        "result": result_info,
+    }
+    socketio.emit("move_played", payload, room=room_id)
+
+    for name, info in players_snapshot.items():
+        sid = info.get("sid")
+        if sid:
+            player_rooms.pop(sid, None)
+            leave_room(room_id, sid=sid)
+
+    if departing_sid:
+        player_rooms.pop(departing_sid, None)
+
+    return True
 
 
 def dissolve_room(room_id, departing_pseudo=None, departing_sid=None, notify=True):
@@ -696,11 +962,19 @@ def create_room():
         next_room_id += 1
         rooms_multi[room_id] = {
             "host": pseudo,
-            "players": {pseudo: {"color": "rouge", "sid": None}},
+            "players": {
+                pseudo: {
+                    "color": "rouge",
+                    "sid": None,
+                    "elo": get_user_elo(pseudo),
+                }
+            },
             "order": [pseudo],
             "status": "waiting",
             "board": create_empty_board(),
-            "turn": None
+            "turn": None,
+            "reset_votes": set(),
+            "reset_context": None,
         }
 
     return jsonify({"ok": True, "room_id": room_id})
@@ -726,7 +1000,11 @@ def join_room_multi(room_id):
         if len(room["players"]) >= 2:
             return jsonify({"ok": False, "error": "room_full"}), 400
 
-        room["players"][pseudo] = {"color": "jaune", "sid": None}
+        room["players"][pseudo] = {
+            "color": "jaune",
+            "sid": None,
+            "elo": get_user_elo(pseudo),
+        }
         room["order"].append(pseudo)
         room["status"] = "ready"
 
@@ -868,6 +1146,9 @@ def mettre_a_jour_scores(pseudo, victoire_ia):
     else:
         scores[pseudo]["victoires"] += 1
 
+    if pseudo:
+        adjust_c4_ai_score(pseudo, victory=not victoire_ia)
+
     with open(chemin, "w") as f:
         json.dump(scores, f, indent=2)
 
@@ -978,9 +1259,17 @@ def handle_disconnect():
     pseudo = connected_users.pop(sid, "inconnu")
     print(f"{pseudo} déconnecté (sid={sid})")
 
-    room_id = player_rooms.pop(sid, None)
+    room_id = player_rooms.get(sid)
     if room_id:
-        dissolve_room(room_id, departing_pseudo=pseudo, departing_sid=sid)
+        with rooms_lock:
+            room = rooms_multi.get(room_id)
+            status = room.get("status") if room else None
+        if room and status == "playing" and pseudo != "inconnu":
+            forfeit_room(room_id, pseudo, departing_sid=sid)
+            player_rooms.pop(sid, None)
+        else:
+            player_rooms.pop(sid, None)
+            dissolve_room(room_id, departing_pseudo=pseudo, departing_sid=sid)
 
     # Met à jour la liste envoyée aux admins restants
     users = list(connected_users.values())
@@ -1050,13 +1339,18 @@ def register_player(data):
 
         info = room["players"][pseudo]
         info["sid"] = request.sid
+        info.setdefault("elo", get_user_elo(pseudo))
         join_room(room_id)
         player_rooms[request.sid] = room_id
+        total_players = len(room["players"])
+        display_total = max(2, total_players)
 
         if len(room["players"]) < 2:
             waiting_payload = {
                 "color": info["color"],
-                "board": clone_board(room["board"])
+                "board": clone_board(room["board"]),
+                "your_elo": info["elo"],
+                "total": display_total,
             }
         else:
             all_connected = all(pdata.get("sid") for pdata in room["players"].values())
@@ -1065,6 +1359,8 @@ def register_player(data):
                 board_copy = clone_board(room["board"])
                 room["turn"] = room["order"][0]
                 room["status"] = "playing"
+                room["reset_votes"] = set()
+                room["reset_context"] = None
                 for pseudo_player, pdata in room["players"].items():
                     opponent = [p for p in room["players"] if p != pseudo_player][0]
                     start_payloads.append({
@@ -1075,13 +1371,18 @@ def register_player(data):
                             "color": pdata["color"],
                             "you": pseudo_player,
                             "opponent": opponent,
-                            "your_turn": room["turn"] == pseudo_player
+                            "your_turn": room["turn"] == pseudo_player,
+                            "your_elo": pdata.get("elo", get_user_elo(pseudo_player)),
+                            "opponent_elo": room["players"][opponent].get("elo", get_user_elo(opponent)),
+                            "total": display_total,
                         }
                     })
             else:
                 waiting_payload = {
                     "color": info["color"],
-                    "board": clone_board(room["board"])
+                    "board": clone_board(room["board"]),
+                    "your_elo": info["elo"],
+                    "total": display_total,
                 }
 
     if waiting_payload:
@@ -1132,17 +1433,39 @@ def play_move(data):
                     if row_played is None:
                         error_payload = {"message": "column_full"}
                     else:
+                        opponent = next((p for p in room["players"] if p != pseudo), None)
                         winner = check_victory(board, row_played, column, token)
                         draw = board_full(board)
+                        result_info = None
                         if winner:
                             room["status"] = "finished"
                             room["turn"] = None
+                            room["reset_votes"] = set()
+                            room["reset_context"] = "rematch"
+                            result_info = apply_multiplayer_result(
+                                room,
+                                winner=pseudo,
+                                loser=opponent,
+                                draw=False,
+                                reason="victory",
+                            )
                         elif draw:
                             room["status"] = "finished"
                             room["turn"] = None
+                            room["reset_votes"] = set()
+                            room["reset_context"] = "rematch"
+                            result_info = apply_multiplayer_result(
+                                room,
+                                winner=None,
+                                loser=None,
+                                draw=True,
+                                reason="draw",
+                            )
                         else:
                             next_player = [p for p in room["players"] if p != pseudo][0]
                             room["turn"] = next_player
+                            room["reset_votes"] = set()
+                            room["reset_context"] = None
                         move_payload = {
                             "board": clone_board(board),
                             "column": column,
@@ -1151,7 +1474,8 @@ def play_move(data):
                             "color": room["players"][pseudo]["color"],
                             "next_turn": room["turn"],
                             "winner": pseudo if winner else None,
-                            "draw": draw and not winner
+                            "draw": draw and not winner,
+                            "result": result_info,
                         }
 
     if error_payload:
@@ -1170,6 +1494,7 @@ def reset_multiplayer(data):
         return
 
     responses = []
+    broadcast_vote = None
 
     with rooms_lock:
         room = rooms_multi.get(room_id)
@@ -1177,44 +1502,70 @@ def reset_multiplayer(data):
             emit("room_error", {"message": "room_not_found"})
             return
 
-        room["board"] = create_empty_board()
-        board_copy = clone_board(room["board"])
+        total_players = len(room["players"])
+        display_total = max(2, total_players)
+        if total_players < 2:
+            emit("room_error", {"message": "not_enough_players"})
+            return
 
-        connected_players = {
-            name: info for name, info in room["players"].items() if info.get("sid")
+        votes = room.setdefault("reset_votes", set())
+        context = "rematch" if room.get("status") == "finished" else "reset"
+        room["reset_context"] = context
+        votes.add(pseudo)
+        vote_count = len(votes)
+        broadcast_vote = {
+            "votes": vote_count,
+            "total": display_total,
+            "context": context,
         }
 
-        if len(room["players"]) >= 2 and len(connected_players) == len(room["players"]):
-            room["status"] = "playing"
-            room["turn"] = room["order"][0]
-            next_turn = room["turn"]
-            for name, info in room["players"].items():
-                sid = info.get("sid")
-                if not sid:
-                    continue
-                opponent = next((p for p in room["players"] if p != name), None)
-                payload = {
-                    "room_id": room_id,
-                    "board": clone_board(board_copy),
-                    "color": info["color"],
-                    "opponent": opponent,
-                    "your_turn": next_turn == name,
-                    "next_turn": next_turn,
-                }
-                responses.append(("game_reset", sid, payload))
-        else:
-            room["status"] = "waiting"
-            room["turn"] = None
-            for name, info in room["players"].items():
-                sid = info.get("sid")
-                if not sid:
-                    continue
-                payload = {
-                    "color": info["color"],
-                    "board": clone_board(board_copy),
-                }
-                responses.append(("waiting_player", sid, payload))
+        if vote_count == total_players:
+            room["board"] = create_empty_board()
+            board_copy = clone_board(room["board"])
+            connected_players = {
+                name: info for name, info in room["players"].items() if info.get("sid")
+            }
+            if len(connected_players) == total_players:
+                room["status"] = "playing"
+                room["turn"] = room["order"][0]
+                room["reset_votes"] = set()
+                room["reset_context"] = None
+                next_turn = room["turn"]
+                for name, info in room["players"].items():
+                    sid = info.get("sid")
+                    if not sid:
+                        continue
+                    opponent = next((p for p in room["players"] if p != name), None)
+                    payload = {
+                        "room_id": room_id,
+                        "board": clone_board(board_copy),
+                        "color": info["color"],
+                        "opponent": opponent,
+                        "your_turn": next_turn == name,
+                        "next_turn": next_turn,
+                        "your_elo": info.get("elo", get_user_elo(name)),
+                        "opponent_elo": room["players"].get(opponent, {}).get("elo", get_user_elo(opponent)) if opponent else None,
+                        "total": display_total,
+                    }
+                    responses.append(("game_reset", sid, payload))
+            else:
+                room["status"] = "waiting"
+                room["turn"] = None
+                room["reset_votes"] = set()
+                for name, info in room["players"].items():
+                    sid = info.get("sid")
+                    if not sid:
+                        continue
+                    payload = {
+                        "color": info["color"],
+                        "board": clone_board(board_copy),
+                        "your_elo": info.get("elo", get_user_elo(name)),
+                        "total": display_total,
+                    }
+                    responses.append(("waiting_player", sid, payload))
 
+    if broadcast_vote:
+        socketio.emit("reset_vote_update", broadcast_vote, room=room_id)
     for event_name, sid, payload in responses:
         socketio.emit(event_name, payload, room=sid)
 
@@ -1222,9 +1573,17 @@ def reset_multiplayer(data):
 @socketio.on('leave_multiplayer')
 def leave_multiplayer(data):
     pseudo = connected_users.get(request.sid)
-    room_id = player_rooms.pop(request.sid, None)
+    room_id = player_rooms.get(request.sid)
     if room_id:
-        dissolve_room(room_id, departing_pseudo=pseudo, departing_sid=request.sid)
+        with rooms_lock:
+            room = rooms_multi.get(room_id)
+            status = room.get("status") if room else None
+        if room and status == "playing" and pseudo:
+            forfeit_room(room_id, pseudo, departing_sid=request.sid)
+            player_rooms.pop(request.sid, None)
+        else:
+            player_rooms.pop(request.sid, None)
+            dissolve_room(room_id, departing_pseudo=pseudo, departing_sid=request.sid)
     emit("left_room", {"ok": True})
 
 
