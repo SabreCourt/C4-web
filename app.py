@@ -158,6 +158,69 @@ solver_lock = threading.Lock()
 def lobby():
     return render_template("lobby.html", pseudo=session["pseudo"])
 
+
+# --- Gestion du mode multijoueur ---
+rooms_lock = threading.Lock()
+rooms_multi = {}
+player_rooms = {}
+next_room_id = 1
+
+
+def create_empty_board():
+    return [[0 for _ in range(7)] for _ in range(6)]
+
+
+def clone_board(board):
+    return [row[:] for row in board]
+
+
+def check_victory(board, row, col, token):
+    directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+    for dr, dc in directions:
+        count = 1
+        for step in (1, -1):
+            r, c = row + dr * step, col + dc * step
+            while 0 <= r < 6 and 0 <= c < 7 and board[r][c] == token:
+                count += 1
+                r += dr * step
+                c += dc * step
+        if count >= 4:
+            return True
+    return False
+
+
+def board_full(board):
+    return all(cell != 0 for row in board for cell in row)
+
+
+def dissolve_room(room_id, departing_pseudo=None, departing_sid=None, notify=True):
+    with rooms_lock:
+        room = rooms_multi.pop(room_id, None)
+    if not room:
+        return False
+
+    if departing_sid:
+        leave_room(room_id, sid=departing_sid)
+
+    for pseudo, info in room["players"].items():
+        sid = info.get("sid")
+        if not sid:
+            continue
+        player_rooms.pop(sid, None)
+        if sid != departing_sid:
+            leave_room(room_id, sid=sid)
+        if notify and pseudo != departing_pseudo:
+            socketio.emit("opponent_left", {"pseudo": departing_pseudo}, room=sid)
+    return True
+
+
+def find_room_for_player(pseudo):
+    with rooms_lock:
+        for room_id, room in rooms_multi.items():
+            if pseudo in room["players"]:
+                return room_id, room
+    return None, None
+
 @app.route("/admin")
 @login_required
 def admin_panel():
@@ -167,6 +230,92 @@ def admin_panel():
         return redirect(url_for("lobby"))
     print('Access granted for admin user:', session.get("pseudo"))
     return render_template("admin.html", pseudo=session["pseudo"])
+
+
+@app.route("/lobby_multi")
+@login_required
+def lobby_multi():
+    return render_template("lobby_multi.html", pseudo=session["pseudo"])
+
+
+@app.route("/multi/<room_id>")
+@login_required
+def multi(room_id):
+    pseudo = session["pseudo"]
+    with rooms_lock:
+        room = rooms_multi.get(room_id)
+        if not room or pseudo not in room["players"]:
+            return redirect(url_for("lobby_multi"))
+    return render_template("multi.html", pseudo=pseudo, room_id=room_id)
+
+
+@app.route("/api/rooms", methods=["GET"])
+@login_required
+def list_rooms():
+    pseudo = session["pseudo"]
+    with rooms_lock:
+        rooms = []
+        for room_id, room in rooms_multi.items():
+            rooms.append({
+                "id": room_id,
+                "host": room["host"],
+                "players": list(room["players"].keys()),
+                "status": room["status"],
+                "is_owner": room["host"] == pseudo
+            })
+    return jsonify({"rooms": rooms})
+
+
+@app.route("/api/rooms", methods=["POST"])
+@login_required
+def create_room():
+    global next_room_id
+    pseudo = session["pseudo"]
+
+    existing_room_id, _ = find_room_for_player(pseudo)
+    if existing_room_id:
+        return jsonify({"ok": False, "error": "already_in_room", "room_id": existing_room_id}), 400
+
+    with rooms_lock:
+        room_id = f"room-{next_room_id}"
+        next_room_id += 1
+        rooms_multi[room_id] = {
+            "host": pseudo,
+            "players": {pseudo: {"color": "rouge", "sid": None}},
+            "order": [pseudo],
+            "status": "waiting",
+            "board": create_empty_board(),
+            "turn": None
+        }
+
+    return jsonify({"ok": True, "room_id": room_id})
+
+
+@app.route("/api/rooms/<room_id>/join", methods=["POST"])
+@login_required
+def join_room_multi(room_id):
+    pseudo = session["pseudo"]
+
+    existing_room_id, _ = find_room_for_player(pseudo)
+    if existing_room_id:
+        if existing_room_id == room_id:
+            return jsonify({"ok": True, "room_id": room_id})
+        return jsonify({"ok": False, "error": "already_in_room", "room_id": existing_room_id}), 400
+
+    with rooms_lock:
+        room = rooms_multi.get(room_id)
+        if not room:
+            return jsonify({"ok": False, "error": "room_not_found"}), 404
+        if room["status"] not in ("waiting", "ready"):
+            return jsonify({"ok": False, "error": "room_unavailable"}), 400
+        if len(room["players"]) >= 2:
+            return jsonify({"ok": False, "error": "room_full"}), 400
+
+        room["players"][pseudo] = {"color": "jaune", "sid": None}
+        room["order"].append(pseudo)
+        room["status"] = "ready"
+
+    return jsonify({"ok": True, "room_id": room_id})
 
 
 
@@ -398,12 +547,17 @@ def handle_pseudo(pseudo):
         for sid in admin_sids:
             socketio.emit('update_users', users, room=sid)
     # Optionnel : si tu veux que tous les admins voient en "broadcast", on a déjà ciblé ci-dessus.
+    return {"ok": True}
 
 @socketio.on('disconnect')
 def handle_disconnect():
     sid = request.sid
     pseudo = connected_users.pop(sid, "inconnu")
     print(f"{pseudo} déconnecté (sid={sid})")
+
+    room_id = player_rooms.pop(sid, None)
+    if room_id:
+        dissolve_room(room_id, departing_pseudo=pseudo, departing_sid=sid)
 
     # Met à jour la liste envoyée aux admins restants
     users = list(connected_users.values())
@@ -452,6 +606,144 @@ spectateurs = {}
 @login_required
 def spectateur(pseudo):
     return render_template('spectateur.html', joueur=pseudo)
+
+
+@socketio.on('register_player')
+def register_player(data):
+    room_id = data.get("room_id")
+    pseudo = connected_users.get(request.sid)
+    if not room_id or not pseudo:
+        emit("room_error", {"message": "identification_incomplete"})
+        return
+
+    waiting_payload = None
+    start_payloads = []
+
+    with rooms_lock:
+        room = rooms_multi.get(room_id)
+        if not room or pseudo not in room["players"]:
+            emit("room_error", {"message": "room_not_found"})
+            return
+
+        info = room["players"][pseudo]
+        info["sid"] = request.sid
+        join_room(room_id)
+        player_rooms[request.sid] = room_id
+
+        if len(room["players"]) < 2:
+            waiting_payload = {
+                "color": info["color"],
+                "board": clone_board(room["board"])
+            }
+        else:
+            all_connected = all(pdata.get("sid") for pdata in room["players"].values())
+            if all_connected:
+                room["board"] = create_empty_board()
+                board_copy = clone_board(room["board"])
+                room["turn"] = room["order"][0]
+                room["status"] = "playing"
+                for pseudo_player, pdata in room["players"].items():
+                    opponent = [p for p in room["players"] if p != pseudo_player][0]
+                    start_payloads.append({
+                        "sid": pdata.get("sid"),
+                        "payload": {
+                            "room_id": room_id,
+                            "board": board_copy,
+                            "color": pdata["color"],
+                            "you": pseudo_player,
+                            "opponent": opponent,
+                            "your_turn": room["turn"] == pseudo_player
+                        }
+                    })
+            else:
+                waiting_payload = {
+                    "color": info["color"],
+                    "board": clone_board(room["board"])
+                }
+
+    if waiting_payload:
+        emit("waiting_player", waiting_payload)
+    for item in start_payloads:
+        if item["sid"]:
+            socketio.emit("game_start", item["payload"], room=item["sid"])
+
+
+@socketio.on('play_move')
+def play_move(data):
+    room_id = data.get("room_id")
+    column = data.get("column")
+    pseudo = connected_users.get(request.sid)
+
+    if room_id is None or pseudo is None:
+        emit("room_error", {"message": "identification_incomplete"})
+        return
+
+    move_payload = None
+    error_payload = None
+
+    with rooms_lock:
+        room = rooms_multi.get(room_id)
+        if not room or pseudo not in room["players"]:
+            error_payload = {"message": "room_not_found"}
+        elif room["status"] != "playing":
+            error_payload = {"message": "game_not_active"}
+        elif room["turn"] != pseudo:
+            error_payload = {"message": "not_your_turn"}
+        else:
+            try:
+                column = int(column)
+            except (TypeError, ValueError):
+                error_payload = {"message": "invalid_column"}
+            else:
+                if not 0 <= column < 7:
+                    error_payload = {"message": "invalid_column"}
+                else:
+                    board = room["board"]
+                    token = 1 if room["players"][pseudo]["color"] == "rouge" else 2
+                    row_played = None
+                    for row in range(5, -1, -1):
+                        if board[row][column] == 0:
+                            board[row][column] = token
+                            row_played = row
+                            break
+                    if row_played is None:
+                        error_payload = {"message": "column_full"}
+                    else:
+                        winner = check_victory(board, row_played, column, token)
+                        draw = board_full(board)
+                        if winner:
+                            room["status"] = "finished"
+                            room["turn"] = None
+                        elif draw:
+                            room["status"] = "finished"
+                            room["turn"] = None
+                        else:
+                            next_player = [p for p in room["players"] if p != pseudo][0]
+                            room["turn"] = next_player
+                        move_payload = {
+                            "board": clone_board(board),
+                            "column": column,
+                            "row": row_played,
+                            "played_by": pseudo,
+                            "color": room["players"][pseudo]["color"],
+                            "next_turn": room["turn"],
+                            "winner": pseudo if winner else None,
+                            "draw": draw and not winner
+                        }
+
+    if error_payload:
+        emit("move_rejected", error_payload)
+    elif move_payload:
+        socketio.emit("move_played", move_payload, room=room_id)
+
+
+@socketio.on('leave_multiplayer')
+def leave_multiplayer(data):
+    pseudo = connected_users.get(request.sid)
+    room_id = player_rooms.pop(request.sid, None)
+    if room_id:
+        dissolve_room(room_id, departing_pseudo=pseudo, departing_sid=request.sid)
+    emit("left_room", {"ok": True})
 
 
 @socketio.on("demande_video")
