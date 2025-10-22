@@ -213,7 +213,7 @@ def send_reset_email(user):
         "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message."
     )
     msg.html = render_template(
-        "emails/reset_password.html",
+        "C4/emails/reset_password.html",
         pseudo=user["pseudo"],
         reset_url=reset_url,
     )
@@ -291,7 +291,7 @@ def forgot_password():
             message = "Si un compte existe, un lien de réinitialisation a été envoyé."
             status = "success"
 
-    return render_template("forgot_password.html", message=message, status=status)
+    return render_template("C4/forgot_password.html", message=message, status=status)
 
 
 @app.route("/reset/<token>", methods=["GET", "POST"])
@@ -302,7 +302,7 @@ def reset_password(token):
     user_id = verify_reset_token(token)
     if user_id == "expired":
         return render_template(
-            "reset_password.html",
+            "C4/reset_password.html",
             token=None,
             message="Ce lien a expiré. Veuillez refaire une demande de réinitialisation.",
             status="error",
@@ -310,7 +310,7 @@ def reset_password(token):
 
     if user_id is None:
         return render_template(
-            "reset_password.html",
+            "C4/reset_password.html",
             token=None,
             message="Lien de réinitialisation invalide.",
             status="error",
@@ -319,7 +319,7 @@ def reset_password(token):
     user = get_user_by_id(user_id)
     if not user:
         return render_template(
-            "reset_password.html",
+            "C4/reset_password.html",
             token=None,
             message="Utilisateur introuvable.",
             status="error",
@@ -345,7 +345,7 @@ def reset_password(token):
                 )
             )
 
-    return render_template("reset_password.html", token=token, message=message, status=status)
+    return render_template("C4/reset_password.html", token=token, message=message, status=status)
 
 
 @app.route("/logout", methods=["POST"])
@@ -391,7 +391,7 @@ solver_lock = threading.Lock()
 @app.route("/lobby")
 @login_required
 def lobby():
-    return render_template("lobby.html", pseudo=session["pseudo"])
+    return render_template("C4/lobby.html", pseudo=session["pseudo"])
 
 
 # --- Gestion du mode multijoueur ---
@@ -464,13 +464,13 @@ def admin_panel():
         print('Access denied for user:', session.get("pseudo"))
         return redirect(url_for("lobby"))
     print('Access granted for admin user:', session.get("pseudo"))
-    return render_template("admin.html", pseudo=session["pseudo"])
+    return render_template("C4/admin.html", pseudo=session["pseudo"])
 
 
 @app.route("/lobby_multi")
 @login_required
 def lobby_multi():
-    return render_template("lobby_multi.html", pseudo=session["pseudo"])
+    return render_template("C4/lobby_multi.html", pseudo=session["pseudo"])
 
 
 @app.route("/multi/<room_id>")
@@ -481,7 +481,7 @@ def multi(room_id):
         room = rooms_multi.get(room_id)
         if not room or pseudo not in room["players"]:
             return redirect(url_for("lobby_multi"))
-    return render_template("multi.html", pseudo=pseudo, room_id=room_id)
+    return render_template("C4/multi.html", pseudo=pseudo, room_id=room_id)
 
 
 @app.route("/api/rooms", methods=["GET"])
@@ -593,7 +593,7 @@ def jeu():
     except Exception as e:
         print("Erreur chargement scores :", e)
 
-    return render_template("index.html", pseudo=pseudo_courant, top10=top10, joueur_score=score_pseudo)
+    return render_template("C4/index.html", pseudo=pseudo_courant, top10=top10, joueur_score=score_pseudo)
 
 @app.route('/reset', methods=['POST'])
 def reset_partie():
@@ -608,7 +608,7 @@ def connexion():
     status = request.args.get('status')
     response = make_response(
         render_template(
-            'connexion.html',
+            'C4/connexion.html',
             initial_message=message,
             initial_status=status,
         )
@@ -848,7 +848,7 @@ spectateurs = {}
 @app.route('/spectateur/<pseudo>')
 @login_required
 def spectateur(pseudo):
-    return render_template('spectateur.html', joueur=pseudo)
+    return render_template('C4/spectateur.html', joueur=pseudo)
 
 
 @socketio.on('register_player')
