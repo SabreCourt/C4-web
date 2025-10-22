@@ -107,19 +107,24 @@ def login():
     data = request.get_json() or {}
     username = data.get("username", "").strip()
     password = data.get("password", "")
-    print(username + " logged in")
     if not username or not password:
         return jsonify({"ok": False, "error": "missing_fields"}), 400
-    if verify_user(username, password):
-        session["username"] = username
-        session["pseudo"] = username
+
+    if not verify_user(username, password):
+        return jsonify({"ok": False, "error": "invalid_credentials"}), 401
+
+    session["username"] = username
+    session["pseudo"] = username
     return jsonify({"ok": True, "username": username, "redirect": "/lobby"})
 
 
 @app.route("/logout", methods=["POST"])
 def logout():
-    session.pop("username", None)
-    return jsonify({"ok": True})
+    session.clear()
+    best_accept = request.accept_mimetypes.best if request.accept_mimetypes else None
+    if request.is_json or best_accept == "application/json":
+        return jsonify({"ok": True, "redirect": url_for("connexion")})
+    return redirect(url_for("connexion"))
 
 # Choix du bon binaire selon le système
 if sys.platform.startswith("win"):
@@ -735,6 +740,65 @@ def play_move(data):
         emit("move_rejected", error_payload)
     elif move_payload:
         socketio.emit("move_played", move_payload, room=room_id)
+
+
+@socketio.on('reset_multiplayer')
+def reset_multiplayer(data):
+    room_id = data.get("room_id") if isinstance(data, dict) else None
+    pseudo = connected_users.get(request.sid)
+
+    if room_id is None or pseudo is None:
+        emit("room_error", {"message": "identification_incomplete"})
+        return
+
+    responses = []
+
+    with rooms_lock:
+        room = rooms_multi.get(room_id)
+        if not room or pseudo not in room["players"]:
+            emit("room_error", {"message": "room_not_found"})
+            return
+
+        room["board"] = create_empty_board()
+        board_copy = clone_board(room["board"])
+
+        connected_players = {
+            name: info for name, info in room["players"].items() if info.get("sid")
+        }
+
+        if len(room["players"]) >= 2 and len(connected_players) == len(room["players"]):
+            room["status"] = "playing"
+            room["turn"] = room["order"][0]
+            next_turn = room["turn"]
+            for name, info in room["players"].items():
+                sid = info.get("sid")
+                if not sid:
+                    continue
+                opponent = next((p for p in room["players"] if p != name), None)
+                payload = {
+                    "room_id": room_id,
+                    "board": clone_board(board_copy),
+                    "color": info["color"],
+                    "opponent": opponent,
+                    "your_turn": next_turn == name,
+                    "next_turn": next_turn,
+                }
+                responses.append(("game_reset", sid, payload))
+        else:
+            room["status"] = "waiting"
+            room["turn"] = None
+            for name, info in room["players"].items():
+                sid = info.get("sid")
+                if not sid:
+                    continue
+                payload = {
+                    "color": info["color"],
+                    "board": clone_board(board_copy),
+                }
+                responses.append(("waiting_player", sid, payload))
+
+    for event_name, sid, payload in responses:
+        socketio.emit(event_name, payload, room=sid)
 
 
 @socketio.on('leave_multiplayer')
