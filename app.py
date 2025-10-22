@@ -1,16 +1,19 @@
 from flask import Flask, request, jsonify, render_template, send_from_directory, make_response, redirect, url_for, session
 from subprocess import Popen, PIPE
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 import os
 import json
 import time
 import threading
 import sys
 import stat
+import re
 
 
 import sqlite3
-from werkzeug.security import generate_password_hash, check_password_hash
+import bcrypt
 
 from functools import wraps
 from flask import redirect, url_for, session
@@ -32,52 +35,195 @@ if 'app' not in globals():
 
 socketio = SocketIO(app)
 
+# Mail configuration
+app.config.setdefault("MAIL_SERVER", os.environ.get("MAIL_SERVER", "smtp.gmail.com"))
+app.config.setdefault("MAIL_PORT", int(os.environ.get("MAIL_PORT", 587)))
+app.config.setdefault(
+    "MAIL_USE_TLS",
+    str(os.environ.get("MAIL_USE_TLS", "True")).lower() in ("true", "1", "yes", "on"),
+)
+app.config.setdefault("MAIL_USERNAME", os.environ.get("MAIL_USERNAME", ""))
+app.config.setdefault("MAIL_PASSWORD", os.environ.get("MAIL_PASSWORD", ""))
+app.config.setdefault("MAIL_DEFAULT_SENDER", app.config.get("MAIL_USERNAME"))
+
+mail = Mail(app)
+
+serializer = URLSafeTimedSerializer(app.secret_key)
+RESET_TOKEN_SALT = "password-reset-salt"
+RESET_TOKEN_MAX_AGE = 1800  # 30 minutes
+
 
 # Database file
 DB_PATH = os.path.join(os.path.dirname(__file__), "users.db")
 
-def init_db():
+EMAIL_REGEX = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+
+def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("PRAGMA user_version")
+    version = cursor.fetchone()[0]
+
+    if version < 1:
+        # Drop any legacy tables and recreate with the new structure
+        cursor.execute("DROP TABLE IF EXISTS user")
+        cursor.execute("DROP TABLE IF EXISTS users")
+        cursor.execute(
+            """
+            CREATE TABLE user (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pseudo TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+        cursor.execute("PRAGMA user_version = 1")
+    else:
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='user'"
+        )
+        if not cursor.fetchone():
+            cursor.execute(
+                """
+                CREATE TABLE user (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pseudo TEXT UNIQUE NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                """
+            )
+
     conn.commit()
     conn.close()
+
 
 # Initialize DB at startup
 init_db()
 
+
 # Helper functions
-def create_user(username, password):
-    password_hash = generate_password_hash(password)
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def create_user(pseudo: str, email: str, password: str):
+    password_hash = hash_password(password)
     try:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hash))
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT 1 FROM user WHERE pseudo = ?", (pseudo,))
+        if cursor.fetchone():
+            return False, "pseudo_taken"
+
+        cursor.execute("SELECT 1 FROM user WHERE email = ?", (email,))
+        if cursor.fetchone():
+            return False, "email_taken"
+
+        cursor.execute(
+            "INSERT INTO user (pseudo, email, password_hash) VALUES (?, ?, ?)",
+            (pseudo, email, password_hash),
+        )
         conn.commit()
         return True, None
-    except sqlite3.IntegrityError as e:
-        return False, "username_taken"
     except Exception as e:
         return False, str(e)
     finally:
         conn.close()
 
-def verify_user(username, password):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
-    row = c.fetchone()
+
+def verify_user(pseudo: str, password: str) -> bool:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT password_hash FROM user WHERE pseudo = ?", (pseudo,))
+    row = cursor.fetchone()
     conn.close()
     if not row:
         return False
-    return check_password_hash(row[0], password)
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), row["password_hash"].encode("utf-8"))
+    except ValueError:
+        return False
+
+
+def get_user_by_email(email: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM user WHERE email = ?", (email,))
+    user = cursor.fetchone()
+    conn.close()
+    return user
+
+
+def get_user_by_id(user_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM user WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    return user
+
+
+def update_user_password(user_id: int, password: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE user SET password_hash = ? WHERE id = ?",
+        (hash_password(password), user_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def generate_reset_token(user_id: int) -> str:
+    return serializer.dumps({"user_id": user_id}, salt=RESET_TOKEN_SALT)
+
+
+def verify_reset_token(token: str):
+    try:
+        data = serializer.loads(token, salt=RESET_TOKEN_SALT, max_age=RESET_TOKEN_MAX_AGE)
+        return data.get("user_id")
+    except SignatureExpired:
+        return "expired"
+    except BadSignature:
+        return None
+
+
+def send_reset_email(user):
+    token = generate_reset_token(user["id"])
+    reset_url = url_for("reset_password", token=token, _external=True)
+    msg = Message(
+        subject="Réinitialisation de votre mot de passe",
+        recipients=[user["email"]],
+    )
+    msg.body = (
+        f"Bonjour {user['pseudo']},\n\n"
+        f"Vous avez demandé la réinitialisation de votre mot de passe.\n"
+        f"Cliquez sur le lien suivant (valide 30 minutes) pour en définir un nouveau :\n"
+        f"{reset_url}\n\n"
+        "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message."
+    )
+    msg.html = render_template(
+        "emails/reset_password.html",
+        pseudo=user["pseudo"],
+        reset_url=reset_url,
+    )
+    try:
+        mail.send(msg)
+    except Exception as exc:
+        app.logger.error("Erreur lors de l'envoi de l'email de réinitialisation: %s", exc)
 
 # --- Auth endpoints ---
 from flask import jsonify, request, session
@@ -85,22 +231,32 @@ from flask import jsonify, request, session
 @app.route("/register", methods=["POST"])
 def register():
     data = request.get_json() or {}
-    username = data.get("username", "").strip()
+    pseudo = data.get("username", "").strip()
+    email = data.get("email", "").strip()
     password = data.get("password", "")
     password2 = data.get("password2", "")
-    if not username or not password:
+
+    if not pseudo or not email or not password:
         return jsonify({"ok": False, "error": "missing_fields"}), 400
+
+    if not EMAIL_REGEX.match(email):
+        return jsonify({"ok": False, "error": "invalid_email"}), 400
+
     if password != password2:
         return jsonify({"ok": False, "error": "password_mismatch"}), 400
-    ok, err = create_user(username, password)
+
+    ok, err = create_user(pseudo, email, password)
     if not ok:
-        if err == "username_taken":
-            return jsonify({"ok": False, "error": "username_taken"}), 400
+        if err == "pseudo_taken":
+            return jsonify({"ok": False, "error": "pseudo_taken"}), 400
+        if err == "email_taken":
+            return jsonify({"ok": False, "error": "email_taken"}), 400
         return jsonify({"ok": False, "error": "db_error", "detail": err}), 500
+
     # auto-login after register
-    session["username"] = username
-    session["pseudo"] = username
-    return jsonify({"ok": True, "username": username})
+    session["username"] = pseudo
+    session["pseudo"] = pseudo
+    return jsonify({"ok": True, "username": pseudo})
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -116,6 +272,83 @@ def login():
     session["username"] = username
     session["pseudo"] = username
     return jsonify({"ok": True, "username": username, "redirect": "/lobby"})
+
+
+@app.route("/forgot_password", methods=["GET", "POST"])
+def forgot_password():
+    message = None
+    status = None
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        if not email:
+            message = "Veuillez indiquer votre adresse email."
+            status = "error"
+        elif not EMAIL_REGEX.match(email):
+            message = "Adresse email invalide."
+            status = "error"
+        else:
+            user = get_user_by_email(email)
+            if user:
+                send_reset_email(user)
+            message = "Si un compte existe, un lien de réinitialisation a été envoyé."
+            status = "success"
+
+    return render_template("forgot_password.html", message=message, status=status)
+
+
+@app.route("/reset/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    message = None
+    status = None
+
+    user_id = verify_reset_token(token)
+    if user_id == "expired":
+        return render_template(
+            "reset_password.html",
+            token=None,
+            message="Ce lien a expiré. Veuillez refaire une demande de réinitialisation.",
+            status="error",
+        )
+
+    if user_id is None:
+        return render_template(
+            "reset_password.html",
+            token=None,
+            message="Lien de réinitialisation invalide.",
+            status="error",
+        )
+
+    user = get_user_by_id(user_id)
+    if not user:
+        return render_template(
+            "reset_password.html",
+            token=None,
+            message="Utilisateur introuvable.",
+            status="error",
+        )
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        password2 = request.form.get("password2", "")
+
+        if not password:
+            message = "Veuillez saisir un nouveau mot de passe."
+            status = "error"
+        elif password != password2:
+            message = "Les mots de passe ne correspondent pas."
+            status = "error"
+        else:
+            update_user_password(user_id, password)
+            return redirect(
+                url_for(
+                    "connexion",
+                    message="Mot de passe réinitialisé avec succès !",
+                    status="success",
+                )
+            )
+
+    return render_template("reset_password.html", token=token, message=message, status=status)
 
 
 @app.route("/logout", methods=["POST"])
@@ -374,7 +607,15 @@ def reset_partie():
 
 @app.route('/')
 def connexion():
-    response = make_response(render_template('connexion.html'))
+    message = request.args.get('message')
+    status = request.args.get('status')
+    response = make_response(
+        render_template(
+            'connexion.html',
+            initial_message=message,
+            initial_status=status,
+        )
+    )
     response.headers['ngrok-skip-browser-warning'] = 'true'
     return response
 
