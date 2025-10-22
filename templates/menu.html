@@ -151,7 +151,9 @@
       <form method="GET" action="{{ url_for('pendu') }}">
         <button type="submit" class="game-btn primary">🔤 Pendu</button>
       </form>
-      <button type="button" class="game-btn" disabled>🧱 Tetris (bientôt)</button>
+      <form method="GET" action="{{ url_for('tetris') }}">
+        <button type="submit" class="game-btn primary">🧱 Tetris</button>
+      </form>
       <button type="button" class="game-btn" disabled>♞ Échecs (bientôt)</button>
     </div>
     <div class="actions">

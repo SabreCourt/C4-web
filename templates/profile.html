@@ -133,6 +133,11 @@
         <span class="value">{{ c4_online_elo }}</span>
         <span class="detail">Les abandons et départs anticipés sont comptés comme des défaites.</span>
       </div>
+      <div class="stat-card">
+        <span class="label">Meilleur score – Tetris</span>
+        <span class="value">{{ tetris_high_score }}</span>
+        <span class="detail">Mode solo classique. Seul le meilleur score est conservé.</span>
+      </div>
     </div>
     <div class="actions">
       <a href="{{ url_for('menu') }}" class="btn">⬅️ Retour au menu</a>
