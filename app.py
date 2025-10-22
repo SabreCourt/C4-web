@@ -268,7 +268,7 @@ def login():
 
     session["username"] = username
     session["pseudo"] = username
-    return jsonify({"ok": True, "username": username, "redirect": "/lobby"})
+    return jsonify({"ok": True, "username": username, "redirect": url_for("menu")})
 
 
 @app.route("/forgot_password", methods=["GET", "POST"])
@@ -388,10 +388,16 @@ joueurs_coups = {}
 solver_lock = threading.Lock()
 
 
+@app.route("/menu")
+@login_required
+def menu():
+    return render_template("menu.html", pseudo=session["pseudo"])
+
+
 @app.route("/lobby")
 @login_required
 def lobby():
-    return render_template("lobby.html", pseudo=session["pseudo"])
+    return render_template("C4/lobby.html", pseudo=session["pseudo"])
 
 
 # --- Gestion du mode multijoueur ---
@@ -464,13 +470,13 @@ def admin_panel():
         print('Access denied for user:', session.get("pseudo"))
         return redirect(url_for("lobby"))
     print('Access granted for admin user:', session.get("pseudo"))
-    return render_template("admin.html", pseudo=session["pseudo"])
+    return render_template("C4/admin.html", pseudo=session["pseudo"])
 
 
 @app.route("/lobby_multi")
 @login_required
 def lobby_multi():
-    return render_template("lobby_multi.html", pseudo=session["pseudo"])
+    return render_template("C4/lobby_multi.html", pseudo=session["pseudo"])
 
 
 @app.route("/multi/<room_id>")
@@ -481,7 +487,7 @@ def multi(room_id):
         room = rooms_multi.get(room_id)
         if not room or pseudo not in room["players"]:
             return redirect(url_for("lobby_multi"))
-    return render_template("multi.html", pseudo=pseudo, room_id=room_id)
+    return render_template("C4/multi.html", pseudo=pseudo, room_id=room_id)
 
 
 @app.route("/api/rooms", methods=["GET"])
@@ -558,8 +564,8 @@ def join_room_multi(room_id):
 def set_pseudo():
     pseudo = request.form.get('pseudo')
     if pseudo:
-        session['pseudo'] = pseudo  
-        return redirect(url_for('lobby'))
+        session['pseudo'] = pseudo
+        return redirect(url_for('menu'))
     return redirect(url_for('index'))
 
 
@@ -593,7 +599,7 @@ def jeu():
     except Exception as e:
         print("Erreur chargement scores :", e)
 
-    return render_template("index.html", pseudo=pseudo_courant, top10=top10, joueur_score=score_pseudo)
+    return render_template("C4/index.html", pseudo=pseudo_courant, top10=top10, joueur_score=score_pseudo)
 
 @app.route('/reset', methods=['POST'])
 def reset_partie():
@@ -848,7 +854,7 @@ spectateurs = {}
 @app.route('/spectateur/<pseudo>')
 @login_required
 def spectateur(pseudo):
-    return render_template('spectateur.html', joueur=pseudo)
+    return render_template('C4/spectateur.html', joueur=pseudo)
 
 
 @socketio.on('register_player')
