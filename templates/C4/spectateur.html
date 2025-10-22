@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=0.9" />
+  <title>Spectateur – {{ joueur }}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
+  <style>
+    /* --- RESET --- */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* --- BODY --- */
+    body {
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden; /* 🚫 désactive le scroll */
+      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
+      background-attachment: fixed;
+      background-size: cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #f0f4f8;
+      animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* --- CONTAINER --- */
+    .container {
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+      padding: 28px 40px;
+      width: 95%;
+      max-width: 880px;
+      text-align: center;
+      animation: fadeIn 0.6s ease;
+    }
+
+    /* --- TITLE --- */
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p {
+      font-size: 1rem;
+      margin-bottom: 10px;
+      color: #cde0ff;
+    }
+
+    /* --- GRID --- */
+    .grille {
+      display: grid;
+      grid-template-columns: repeat(7, 80px);
+      gap: 8px;
+      margin: 30px auto 20px auto;
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: inset 0 4px 18px rgba(0,0,0,0.7), 0 6px 18px rgba(0,0,0,0.5);
+      justify-content: center;
+    }
+
+    .case {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      box-shadow: inset 0 6px 14px rgba(0,0,0,0.85), 0 4px 10px rgba(0,0,0,0.35);
+    }
+
+    .rouge {
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, #e63946 60%);
+      box-shadow: 0 6px 20px rgba(230,57,71,0.18), inset 0 3px 6px rgba(0,0,0,0.45);
+    }
+
+    .jaune {
+      background: radial-gradient(circle at 35% 30%, #ffd19a, #f4a261 60%);
+      box-shadow: 0 6px 20px rgba(244,162,97,0.13), inset 0 3px 6px rgba(0,0,0,0.45);
+    }
+
+    /* --- BUTTON --- */
+    .menu-btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 22px;
+      font-size: 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: white;
+      background: linear-gradient(90deg, #00baff, #0078ff);
+      box-shadow: 0 0 10px rgba(0, 191, 255, 0.4);
+      transition: all 0.3s ease;
+    }
+
+    .menu-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 15px rgba(0, 191, 255, 0.7);
+    }
+
+    #info-spectateur {
+      color: #cde0ff;
+      font-size: 1rem;
+      margin-top: 10px;
+    }
+
+    /* --- VIDEO --- */
+    video {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 240px;
+      border: 2px solid #1E90FF;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(30,144,255,0.4);
+      display: none;
+    }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 800px) {
+      .grille {
+        grid-template-columns: repeat(7, 10vw);
+        gap: 5px;
+        padding: 10px;
+      }
+      .case { width: 10vw; height: 10vw; }
+      h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Mode spectateur</h1>
+    <p>Vous observez la partie de <strong>{{ joueur }}</strong></p>
+
+    <div id="grille" class="grille"></div>
+    <p id="info-spectateur">⏳ En attente de coups joués...</p>
+
+    <a href="/admin" class="menu-btn">⬅️ Retour Admin</a>
+  </div>
+
+  <video id="video-joueur" autoplay playsinline></video>
+
+  <script>
+    const socket = io();
+    const joueurObserve = "{{ joueur }}";
+    const grilleContainer = document.getElementById("grille");
+    const info = document.getElementById("info-spectateur");
+
+    // S'enregistrer comme spectateur du joueur
+    socket.emit("spectateur", joueurObserve);
+
+    socket.on("etat_grille", data => {
+      const grille = data.grille;
+      grilleContainer.innerHTML = "";
+      for (let i = 0; i < grille.length; i++) {
+        for (let j = 0; j < grille[i].length; j++) {
+          const div = document.createElement("div");
+          div.className = "case";
+          if (grille[i][j] === 1) div.classList.add("rouge");
+          if (grille[i][j] === 2) div.classList.add("jaune");
+          grilleContainer.appendChild(div);
+        }
+      }
+      info.textContent = "🎯 Partie en cours – mise à jour en direct.";
+    });
+  </script>
+</body>
+</html>

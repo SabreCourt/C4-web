@@ -286,7 +286,7 @@
         if(res.ok && data.ok){
           messages.textContent = 'Succès — redirection...';
           messages.className = 'note success';
-          window.location.href = '/lobby';
+          window.location.href = '/menu';
         } else {
           let err = data && data.error ? data.error : 'Erreur inconnue';
           if(err === 'pseudo_taken') err = "Nom d'utilisateur déjà pris.";

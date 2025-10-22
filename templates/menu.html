@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Menu des jeux</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #f0f4f8;
+      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
+    }
+
+    .menu {
+      width: 90%;
+      max-width: 520px;
+      padding: 40px 36px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+      text-align: center;
+      animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 2.2rem;
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p {
+      margin-bottom: 2rem;
+      color: rgba(240, 244, 248, 0.85);
+      line-height: 1.5;
+    }
+
+    .games {
+      display: grid;
+      gap: 14px;
+    }
+
+    .game-btn {
+      padding: 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .game-btn.primary {
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      color: #031427;
+    }
+
+    .game-btn.primary:hover {
+      transform: translateY(-2px);
+      opacity: 0.92;
+    }
+
+    .game-btn:disabled {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.45);
+      cursor: not-allowed;
+    }
+
+    .actions {
+      margin-top: 2.5rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .logout-btn {
+      padding: 12px 26px;
+      border-radius: 999px;
+      border: none;
+      background: rgba(255, 255, 255, 0.08);
+      color: #f0f4f8;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+
+    .logout-btn:hover {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div class="menu">
+    <h1>Bienvenue {{ pseudo }}</h1>
+    <p>Sélectionnez un jeu pour commencer. Seul le Puissance 4 est disponible pour le moment.</p>
+    <div class="games">
+      <form method="GET" action="{{ url_for('lobby') }}">
+        <button type="submit" class="game-btn primary">🎮 Puissance 4</button>
+      </form>
+      <button type="button" class="game-btn" disabled>🔤 Pendu (bientôt)</button>
+      <button type="button" class="game-btn" disabled>🧱 Tetris (bientôt)</button>
+      <button type="button" class="game-btn" disabled>♞ Échecs (bientôt)</button>
+    </div>
+    <div class="actions">
+      <form method="POST" action="/logout">
+        <button type="submit" class="logout-btn">🚪 Déconnexion</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

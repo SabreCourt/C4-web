@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=0.9">
+  <title>Admin Panel</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
+      background-attachment: fixed;
+      background-size: cover;
+      background-repeat: no-repeat;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #f0f4f8;
+      animation: fadeIn 0.6s ease;
+      padding: 40px 20px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 38px;
+      margin-bottom: 20px;
+      color: #00baff;
+      text-shadow: 0 0 8px rgba(0,191,255,0.5);
+    }
+
+    .admin-box {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 30px;
+      width: 95%;
+      max-width: 700px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.5);
+      text-align: left;
+      animation: fadeIn 0.8s ease;
+    }
+
+    .admin-box h2 {
+      color: #ffd700;
+      margin-bottom: 15px;
+      font-size: 24px;
+    }
+
+    ul#user-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      background: rgba(255,255,255,0.07);
+      margin-bottom: 10px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.3s;
+    }
+
+    li:hover {
+      background: rgba(0, 191, 255, 0.15);
+    }
+
+    .pseudo {
+      color: #00eaff;
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .watch-btn {
+      background: linear-gradient(90deg, #00baff, #0078ff);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.3s;
+    }
+
+    .watch-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 10px rgba(0,191,255,0.6);
+    }
+
+    .disconnect {
+      margin-top: 25px;
+      text-align: center;
+    }
+
+    .disconnect a {
+      color: #ff6b6b;
+      text-decoration: none;
+      font-weight: bold;
+      transition: color 0.3s;
+    }
+
+    .disconnect a:hover {
+      color: #ff3333;
+    }
+    .menu-container {
+    position: relative;
+    margin-top: 25px;
+    }
+
+    .menu-btn {
+    background: linear-gradient(90deg, #00baff, #0078ff);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.3s;
+    }
+
+    .menu-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 10px rgba(0,191,255,0.6);
+    }
+
+    .menu-dropdown {
+    display: none;
+    position: absolute;
+    top: 120%;
+    right: 0;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
+    border-radius: 10px;
+    padding: 10px;
+    min-width: 150px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    z-index: 100;
+    }
+
+    .menu-dropdown a {
+    display: block;
+    color: #ff6b6b;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 8px 12px;
+    transition: background 0.2s, color 0.2s;
+    }
+
+    .menu-dropdown a:hover {
+    background: rgba(0,191,255,0.2);
+    color: #fff;
+    }
+
+
+  </style>
+</head>
+<body>
+  <h1>👑 Panneau Administrateur</h1>
+
+  <div class="admin-box">
+    <h2>Joueurs connectés</h2>
+    <ul id="user-list">
+      <li>Chargement des joueurs...</li>
+    </ul>
+  </div>
+
+  <div class="menu-container">
+    <button id="menu-btn" class="menu-btn">🏠 Menu</button>
+  </div>
+
+
+
+  <script>
+    const socket = io();
+    const list = document.getElementById("user-list");
+    const menuBtn = document.getElementById("menu-btn");
+
+    menuBtn.addEventListener("click", () => {
+        window.location.href = "/lobby"; // 🌍 redirige dans le même onglet
+    });
+
+
+    socket.on("connect", () => {
+      console.log("✅ Connecté au serveur admin");
+      socket.emit("pseudo", "{{ pseudo|e }}");
+    });
+
+    socket.on("demande_pseudo", () => {
+        socket.emit("pseudo", "{{ pseudo|e }}");
+    });
+
+    socket.on("update_users", (users) => {
+      list.innerHTML = "";
+      if (users.length === 0) {
+        list.innerHTML = "<li>Aucun joueur en ligne.</li>";
+        return;
+      }
+      users.forEach(pseudo => {
+        const li = document.createElement("li");
+        const span = document.createElement("span");
+        span.className = "pseudo";
+        span.textContent = pseudo;
+
+        const btn = document.createElement("button");
+        btn.className = "watch-btn";
+        btn.textContent = "Observer";
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();      // 🔒 empêche toute ouverture automatique
+            e.stopPropagation();     // 🔒 empêche d’autres handlers d’intervenir
+            window.location.assign(`/spectateur/${encodeURIComponent(pseudo)}`); // 🌍 même onglet
+        });
+
+
+
+        li.appendChild(span);
+            if (pseudo.toLowerCase() !== "admin") {  // Ne pas permettre d'observer l'admin
+            li.appendChild(btn);
+            }
+        list.appendChild(li);
+      });
+    });
+  </script>
+</body>
+</html>
