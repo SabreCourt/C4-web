@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pendu</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: rgba(15, 23, 42, 0.85);
+      --primary: #38bdf8;
+      --accent: #f97316;
+      --success: #4ade80;
+      --danger: #f87171;
+      --text: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top, #1e293b, #0f172a 70%);
+      color: var(--text);
+    }
+
+    .game-wrapper {
+      width: min(960px, 92vw);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 28px;
+      padding: 32px;
+      border-radius: 26px;
+      background: linear-gradient(135deg, rgba(30, 64, 175, 0.45), rgba(12, 74, 110, 0.4));
+      box-shadow: 0 20px 45px rgba(8, 47, 73, 0.45);
+      backdrop-filter: blur(20px);
+    }
+
+    .column {
+      background: var(--card);
+      border-radius: 22px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    .score, .attempts {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.16);
+    }
+
+    .word-display {
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      letter-spacing: 0.35em;
+      text-align: center;
+      padding: 28px 18px;
+      border-radius: 18px;
+      background: rgba(148, 163, 184, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    /* 🎨 SVG hangman */
+    .hangman-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 240px;
+      margin-top: 15px;
+    }
+
+    svg.hangman-svg {
+      width: 180px;
+      height: 220px;
+      stroke: var(--text);
+      stroke-width: 3px;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .hangman-part {
+      stroke-dasharray: 200;
+      stroke-dashoffset: 200;
+      opacity: 0;
+      transition: stroke-dashoffset 0.7s ease, opacity 0.5s ease;
+    }
+
+    .hangman-part.visible {
+      stroke-dashoffset: 0;
+      opacity: 1;
+    }
+
+    .hangman-svg.lost {
+      animation: shake 0.4s ease-in-out 2;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    /* 🎯 Input styles */
+    .input-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .input-group input {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(15, 23, 42, 0.65);
+      color: var(--text);
+      font-size: 1.1rem;
+      text-transform: uppercase;
+    }
+
+    .input-group button {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      padding: 12px 24px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), #0ea5e9);
+      color: #031527;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .input-group button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 20px rgba(56, 189, 248, 0.3);
+    }
+
+    .new-game {
+      align-self: flex-start;
+      padding: 12px 24px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #fb923c);
+      color: #1f2937;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .new-game:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 20px rgba(249, 115, 22, 0.35);
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 0.95rem;
+    }
+
+    .footer-links a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-links a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 700px) {
+      .game-wrapper {
+        padding: 24px;
+      }
+
+      .column {
+        padding: 22px;
+      }
+
+      .word-display {
+        letter-spacing: 0.25em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-wrapper">
+    <div class="column">
+      <div class="header">
+        <h1>Jeu du Pendu</h1>
+        <div class="score">Série : <span id="pendu-score">0</span></div>
+        <div class="attempts">Essais restants : <span id="pendu-attempts">0</span></div>
+      </div>
+
+      <div class="word-display" id="pendu-word">_ _ _ _</div>
+      <div class="letters-panel">
+        <h2>Lettres testées</h2>
+        <div class="letters-grid" id="letters-grid"></div>
+      </div>
+    </div>
+
+    <div class="column">
+      <div class="input-card">
+        <label for="guess-input">Propose une nouvelle lettre</label>
+        <form id="guess-form" autocomplete="off">
+          <div class="input-group">
+            <input id="guess-input" name="letter" maxlength="1" autocomplete="off" autofocus required />
+            <button type="submit">Valider</button>
+          </div>
+        </form>
+        <p class="message" id="pendu-message"></p>
+        <button class="new-game" id="new-game" hidden>Nouvelle partie</button>
+      </div>
+
+      <!-- 🎨 SVG MOVED HERE (below input) -->
+      <div class="hangman-container">
+        <svg class="hangman-svg" viewBox="0 0 200 250">
+          <line class="hangman-part base" x1="20" y1="230" x2="180" y2="230" />
+          <line class="hangman-part poteau" x1="60" y1="230" x2="60" y2="40" />
+          <line class="hangman-part traverse" x1="60" y1="40" x2="130" y2="40" />
+          <line class="hangman-part corde" x1="130" y1="40" x2="130" y2="70" />
+          <circle class="hangman-part tete" cx="130" cy="90" r="20" />
+          <line class="hangman-part corps" x1="130" y1="110" x2="130" y2="160" />
+          <line class="hangman-part bras-gauche" x1="130" y1="120" x2="100" y2="140" />
+          <line class="hangman-part bras-droit" x1="130" y1="120" x2="160" y2="140" />
+          <line class="hangman-part jambe-gauche" x1="130" y1="160" x2="110" y2="200" />
+          <line class="hangman-part jambe-droite" x1="130" y1="160" x2="150" y2="200" />
+        </svg>
+      </div>
+
+      <div class="footer-links">
+        <a href="{{ url_for('menu') }}">⟵ Retour au menu</a>
+        <span id="pendu-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const INITIAL_STATE = {{ pendu_state|tojson }};
+    const wordElement = document.getElementById('pendu-word');
+    const attemptsElement = document.getElementById('pendu-attempts');
+    const scoreElement = document.getElementById('pendu-score');
+    const messageElement = document.getElementById('pendu-message');
+    const lettersGrid = document.getElementById('letters-grid');
+    const guessForm = document.getElementById('guess-form');
+    const guessInput = document.getElementById('guess-input');
+    const newGameButton = document.getElementById('new-game');
+    const statusElement = document.getElementById('pendu-status');
+    const hangmanParts = document.querySelectorAll('.hangman-part');
+
+    // 🎯 total parts = 10 → we allow 10 attempts
+    function updateHangmanDrawing(attemptsLeft, maxAttempts) {
+      const errors = maxAttempts - attemptsLeft;
+      hangmanParts.forEach((part, index) => {
+        if (index < errors) part.classList.add('visible');
+        else part.classList.remove('visible');
+      });
+    }
+
+    function renderState(state, extraMessage) {
+      state.max_attempts = 10; // ✅ force 10 attempts
+      wordElement.textContent = state.masked_word;
+      attemptsElement.textContent = `${state.remaining_attempts}/${state.max_attempts}`;
+      scoreElement.textContent = state.score;
+
+      lettersGrid.innerHTML = '';
+      state.attempted_letters.forEach((letter) => {
+        const pill = document.createElement('span');
+        pill.classList.add('letter-pill');
+        if (state.correct_letters.includes(letter)) pill.classList.add('correct');
+        else if (state.incorrect_letters.includes(letter)) pill.classList.add('incorrect');
+        pill.textContent = letter;
+        lettersGrid.appendChild(pill);
+      });
+
+      updateHangmanDrawing(state.remaining_attempts, state.max_attempts);
+
+      if (state.status === 'lost') {
+        document.querySelector('.hangman-svg').classList.add('lost');
+      } else {
+        document.querySelector('.hangman-svg').classList.remove('lost');
+      }
+
+      messageElement.textContent = extraMessage || '';
+      statusElement.textContent = state.status === 'won' ? '🎉 Victoire' : state.status === 'lost' ? '💥 Défaite' : '';
+      newGameButton.hidden = state.status !== 'won' && state.status !== 'lost';
+    }
+
+    async function submitGuess(letter) {
+      const response = await fetch("{{ url_for('pendu_guess') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ letter })
+      });
+      const payload = await response.json();
+      renderState(payload.state, payload.message);
+    }
+
+    async function startNewGame() {
+      const response = await fetch("{{ url_for('pendu_new_game') }}", { method: 'POST' });
+      const payload = await response.json();
+      renderState(payload.state, 'Nouvelle partie !');
+    }
+
+    guessForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const letter = (guessInput.value || '').trim();
+      if (!letter) return;
+      submitGuess(letter);
+      guessInput.value = '';
+      guessInput.focus();
+    });
+
+    newGameButton.addEventListener('click', startNewGame);
+
+    renderState(INITIAL_STATE);
+  </script>
+</body>
+</html>
