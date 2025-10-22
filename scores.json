@@ -1,22 +1,3 @@
 {
-  "Raph": {
-    "victoires": 0,
-    "defaites": 3
-  },
-  "Alec": {
-    "victoires": 0,
-    "defaites": 5
-  },
-  "debdeb": {
-    "victoires": 0,
-    "defaites": 7
-  },
-  "admin": {
-    "victoires": 1,
-    "defaites": 8
-  },
-  "paul.benoit@student-cs.fr": {
-    "victoires": 0,
-    "defaites": 14
-  }
+  
 }

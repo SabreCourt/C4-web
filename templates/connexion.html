@@ -86,6 +86,7 @@
     }
 
     input[type="text"],
+    input[type="email"],
     input[type="password"] {
       padding: 12px;
       border-radius: 8px;
@@ -126,6 +127,30 @@
     .error { color: #ffb3b3; }
     .success { color: #b6ffb6; }
 
+    .aux-links {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+    }
+
+    .aux-links a,
+    .aux-links button.link {
+      color: #cde0ff;
+      text-decoration: none;
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .aux-links a:hover,
+    .aux-links button.link:hover {
+      color: #fff;
+    }
+
     /* --- LISTE PSEUDOS --- */
     .existing-list {
       margin-top: 20px;
@@ -165,14 +190,19 @@
       <div id="tab-register" class="tab">Créer un compte</div>
     </div>
 
-    <div id="messages" class="note"></div>
+    <div id="messages" class="note{% if initial_status %} {{ initial_status }}{% endif %}" data-message="{{ initial_message|default('', true) }}" data-status="{{ initial_status|default('', true) }}">{% if initial_message %}{{ initial_message }}{% endif %}</div>
 
     <form id="auth-form" onsubmit="return false;">
       <input type="text" id="username" name="username" placeholder="Nom d'utilisateur" required>
+      <input type="email" id="email" name="email" placeholder="Adresse email" style="display:none;">
       <input type="password" id="password" name="password" placeholder="Mot de passe" required>
       <input type="password" id="password2" name="password2" placeholder="Confirmez le mot de passe" style="display:none;">
       <button id="submit-btn">Se connecter</button>
     </form>
+
+    <div class="aux-links">
+      <a href="/forgot_password" id="forgot-link">Mot de passe oublié ?</a>
+    </div>
 
     {% if pseudos %}
       <p class="note" style="margin-top:12px;">Pseudos récents :</p>
@@ -187,19 +217,29 @@
   <script>
     const tabLogin = document.getElementById('tab-login');
     const tabRegister = document.getElementById('tab-register');
+    const emailField = document.getElementById('email');
     const password2 = document.getElementById('password2');
     const submitBtn = document.getElementById('submit-btn');
     const messages = document.getElementById('messages');
+
+    const initialMessage = messages.dataset.message;
+    const initialStatus = messages.dataset.status;
+    if(initialMessage){
+      messages.textContent = initialMessage;
+      messages.className = `note ${initialStatus || ''}`.trim();
+    }
 
     function setMode(mode){
       if(mode === 'login'){
         tabLogin.classList.add('active');
         tabRegister.classList.remove('active');
+        emailField.style.display = 'none';
         password2.style.display = 'none';
         submitBtn.textContent = 'Se connecter';
       } else {
         tabLogin.classList.remove('active');
         tabRegister.classList.add('active');
+        emailField.style.display = 'block';
         password2.style.display = 'block';
         submitBtn.textContent = 'Créer le compte';
       }
@@ -214,10 +254,11 @@
       e.preventDefault();
       const mode = tabRegister.classList.contains('active') ? 'register' : 'login';
       const username = document.getElementById('username').value.trim();
+      const email = emailField.value.trim();
       const password = document.getElementById('password').value;
       const password_2 = document.getElementById('password2').value;
 
-      if(!username || !password){
+      if(!username || !password || (mode === 'register' && !email)){
         messages.textContent = 'Veuillez remplir tous les champs obligatoires.';
         messages.className = 'note error';
         return;
@@ -228,12 +269,18 @@
         return;
       }
 
+      const payload = { username, password };
+      if(mode === 'register'){
+        payload.password2 = password_2;
+        payload.email = email;
+      }
+
       const endpoint = mode === 'register' ? '/register' : '/login';
       try{
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, password2: password_2 })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         if(res.ok && data.ok){
@@ -242,7 +289,9 @@
           window.location.href = '/lobby';
         } else {
           let err = data && data.error ? data.error : 'Erreur inconnue';
-          if(err === 'username_taken') err = "Nom d'utilisateur déjà pris.";
+          if(err === 'pseudo_taken') err = "Nom d'utilisateur déjà pris.";
+          else if(err === 'email_taken') err = "Adresse email déjà utilisée.";
+          else if(err === 'invalid_email') err = "Veuillez saisir une adresse email valide.";
           else if(err === 'invalid_credentials') err = "Nom d'utilisateur ou mot de passe invalide.";
           else if(err === 'password_mismatch') err = "Les mots de passe ne correspondent pas.";
           else if(err === 'missing_fields') err = "Champs manquants.";
