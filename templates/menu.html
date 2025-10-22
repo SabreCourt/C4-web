@@ -11,6 +11,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #f0f4f8;
       background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
@@ -61,6 +62,17 @@
       font-weight: 600;
       cursor: pointer;
       transition: transform 0.2s ease, opacity 0.2s ease;
+      width: 100%;
+      display: block;
+    }
+
+    .games form {
+      margin: 0;
+      width: 100%;
+    }
+
+    .games form button {
+      width: 100%;
     }
 
     .game-btn.primary {
@@ -99,9 +111,36 @@
     .logout-btn:hover {
       opacity: 0.85;
     }
+
+    .profile-btn {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #f0f4f8;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .profile-btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 520px) {
+      .profile-btn {
+        top: 16px;
+        left: 16px;
+        padding: 8px 14px;
+      }
+    }
   </style>
 </head>
 <body>
+  <a href="{{ url_for('profile') }}" class="profile-btn">👤 Profil</a>
   <div class="menu">
     <h1>Bienvenue {{ pseudo }}</h1>
     <p>Sélectionnez un jeu pour commencer. Puissance 4 et le Pendu sont disponibles !</p>

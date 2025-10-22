@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Profil de {{ pseudo }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
+      color: #f0f4f8;
+    }
+    .profile {
+      width: min(720px, 100%);
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 20px;
+      padding: 36px 40px;
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      animation: fadeIn 0.5s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h1 {
+      margin: 0;
+      font-size: 2.1rem;
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .intro {
+      margin: 0;
+      color: rgba(240, 244, 248, 0.78);
+      line-height: 1.6;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 18px;
+    }
+    .stat-card {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+    }
+    .stat-card .label {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(240, 244, 248, 0.65);
+    }
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #f0f4f8;
+    }
+    .stat-card .detail {
+      font-size: 0.95rem;
+      color: rgba(240, 244, 248, 0.78);
+    }
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.12);
+      color: #f0f4f8;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      opacity: 0.9;
+    }
+    @media (max-width: 640px) {
+      .profile {
+        padding: 28px;
+        gap: 22px;
+      }
+      h1 {
+        font-size: 1.8rem;
+      }
+      .stat-card .value {
+        font-size: 1.7rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="profile">
+    <h1>Profil de {{ pseudo }}</h1>
+    <p class="intro">Retrouve ici un aperçu de tes performances sur les différents modes de jeu.</p>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="label">Meilleure série de victoires – Pendu</span>
+        <span class="value">{{ best_pendu_streak }}</span>
+        <span class="detail">Série en cours : {{ current_pendu_streak }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="label">Score contre l'IA – Puissance 4</span>
+        <span class="value">{{ c4_ai_wins }} - {{ c4_ai_losses }}</span>
+        <span class="detail">{{ c4_ai_wins }} victoire{{ 's' if c4_ai_wins != 1 else '' }}, {{ c4_ai_losses }} défaite{{ 's' if c4_ai_losses != 1 else '' }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="label">Elo en ligne – Puissance 4</span>
+        <span class="value">{{ c4_online_elo }}</span>
+        <span class="detail">Les abandons et départs anticipés sont comptés comme des défaites.</span>
+      </div>
+    </div>
+    <div class="actions">
+      <a href="{{ url_for('menu') }}" class="btn">⬅️ Retour au menu</a>
+      <a href="{{ url_for('lobby_multi') }}" class="btn">🎮 Rejoindre le lobby multijoueur</a>
+    </div>
+  </div>
+</body>
+</html>

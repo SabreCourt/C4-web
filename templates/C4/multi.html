@@ -51,6 +51,11 @@
       align-items: center;
       margin-bottom: 24px;
     }
+    .player-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
     header h1 {
       margin: 0;
       font-size: 1.8rem;
@@ -62,6 +67,55 @@
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+    .meta {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .elos {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .elo-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 140px;
+    }
+    .elo-card .label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(240,244,248,0.7);
+    }
+    .elo-card .value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #f0f4f8;
+    }
+    .elo-card .delta {
+      font-size: 0.9rem;
+      font-weight: 600;
+      min-height: 1.1rem;
+    }
+    .elo-card .delta.positive {
+      color: #3ddc97;
+    }
+    .elo-card .delta.negative {
+      color: #ff6b6b;
+    }
+    .elo-card .delta.neutral {
+      color: rgba(240,244,248,0.65);
+    }
+    .elo-card.hidden {
+      opacity: 0.4;
     }
     .color-badge {
       padding: 6px 12px;
@@ -165,6 +219,11 @@
       font-size: 1rem;
       transition: transform 0.18s ease, opacity 0.18s ease;
     }
+    .actions button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      transform: none;
+    }
     #reset {
       background: linear-gradient(90deg, #1E90FF, #00c6ff);
       color: #1b2735;
@@ -202,6 +261,12 @@
         padding: 24px;
         gap: 16px;
       }
+      .meta {
+        align-items: flex-start;
+      }
+      .elos {
+        justify-content: flex-start;
+      }
     }
 
     .token.victoire-rouge {
@@ -230,20 +295,34 @@
 <body>
   <div class="container">
     <header>
-      <div>
+      <div class="player-block">
         <h1>Bonjour {{ pseudo }}</h1>
         <div class="opponent" id="opponent"></div>
       </div>
-      <div class="info">
-        <span>Votre couleur :</span>
-        <span class="color-badge" id="color-badge">?</span>
+      <div class="meta">
+        <div class="info">
+          <span>Votre couleur :</span>
+          <span class="color-badge" id="color-badge">?</span>
+        </div>
+        <div class="elos">
+          <div class="elo-card">
+            <span class="label">Votre Elo</span>
+            <span class="value" id="your-elo">-</span>
+            <span class="delta" id="your-elo-delta"></span>
+          </div>
+          <div class="elo-card" id="opponent-elo-card">
+            <span class="label">Elo adverse</span>
+            <span class="value" id="opponent-elo">-</span>
+            <span class="delta" id="opponent-elo-delta"></span>
+          </div>
+        </div>
       </div>
     </header>
     <div id="status">Connexion en cours…</div>
     <div class="board" id="board"></div>
     <div class="actions">
-      <button id="reset">🔄 Réinitialiser</button>
-      <button id="leave">Quitter la partie</button>
+      <button id="reset">🔄 Réinitialiser (0/2)</button>
+      <button id="leave" disabled>Quitter la partie</button>
       <a href="/lobby_multi" class="back">Retour au lobby</a>
     </div>
   </div>
@@ -261,12 +340,67 @@
     const colorBadge = document.getElementById('color-badge');
     const leaveBtn = document.getElementById('leave');
     const resetBtn = document.getElementById('reset');
+    const yourEloEl = document.getElementById('your-elo');
+    const yourEloDeltaEl = document.getElementById('your-elo-delta');
+    const opponentEloEl = document.getElementById('opponent-elo');
+    const opponentEloDeltaEl = document.getElementById('opponent-elo-delta');
+    const opponentEloCard = document.getElementById('opponent-elo-card');
 
     let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     let myColor = null;
     let myTurn = false;
     let gameFinished = false;
     let opponent = null;
+    let myElo = null;
+    let opponentElo = null;
+    let resetVotes = 0;
+    let resetTotal = 2;
+    let resetContext = 'reset';
+    let hasResetVote = false;
+    let canLeave = false;
+
+    function setEloValue(valueEl, deltaEl, rating, delta) {
+      if (valueEl) {
+        if (typeof rating === 'number') {
+          valueEl.textContent = Math.round(rating);
+        } else if (rating) {
+          valueEl.textContent = rating;
+        } else {
+          valueEl.textContent = '-';
+        }
+      }
+      if (deltaEl) {
+        deltaEl.textContent = '';
+        deltaEl.classList.remove('positive', 'negative', 'neutral');
+        if (typeof delta === 'number') {
+          if (delta > 0) {
+            deltaEl.textContent = `+${delta}`;
+            deltaEl.classList.add('positive');
+          } else if (delta < 0) {
+            deltaEl.textContent = `${delta}`;
+            deltaEl.classList.add('negative');
+          } else {
+            deltaEl.textContent = '0';
+            deltaEl.classList.add('neutral');
+          }
+        }
+      }
+    }
+
+    function updateResetButtonDisplay(votes = resetVotes, total = resetTotal, context = resetContext) {
+      const baseLabel = context === 'rematch' ? '✨ Nouvelle partie' : '🔄 Réinitialiser';
+      resetBtn.textContent = `${baseLabel} (${votes}/${total})`;
+    }
+
+    function updateLeaveButton() {
+      leaveBtn.disabled = !canLeave;
+    }
+
+    updateResetButtonDisplay();
+    updateLeaveButton();
+    setEloValue(yourEloEl, yourEloDeltaEl, myElo, undefined);
+    setEloValue(opponentEloEl, opponentEloDeltaEl, opponentElo, undefined);
+    opponentEloCard.classList.add('hidden');
 
     function buildBoard() {
       boardEl.innerHTML = '';
@@ -429,6 +563,18 @@
       syncBoard(data.board || board, { animate: false });
       myTurn = false;
       gameFinished = false;
+      myElo = typeof data.your_elo === 'number' ? data.your_elo : myElo;
+      opponentElo = null;
+      setEloValue(yourEloEl, yourEloDeltaEl, myElo, undefined);
+      setEloValue(opponentEloEl, opponentEloDeltaEl, opponentElo, undefined);
+      opponentEloCard.classList.add('hidden');
+      resetVotes = 0;
+      hasResetVote = false;
+      resetContext = 'reset';
+      resetTotal = data.total || resetTotal;
+      updateResetButtonDisplay(0, resetTotal, resetContext);
+      canLeave = true;
+      updateLeaveButton();
       updateColorBadge();
       updateStatus("En attente d'un adversaire…");
       renderBoard();
@@ -442,6 +588,18 @@
       syncBoard(data.board || board, { animate: false });
       myTurn = !!data.your_turn;
       gameFinished = false;
+      myElo = typeof data.your_elo === 'number' ? data.your_elo : myElo;
+      opponentElo = typeof data.opponent_elo === 'number' ? data.opponent_elo : opponentElo;
+      setEloValue(yourEloEl, yourEloDeltaEl, myElo, undefined);
+      setEloValue(opponentEloEl, opponentEloDeltaEl, opponentElo, undefined);
+      opponentEloCard.classList.toggle('hidden', !opponent);
+      resetVotes = 0;
+      hasResetVote = false;
+      resetContext = 'reset';
+      resetTotal = data.total || 2;
+      updateResetButtonDisplay(0, resetTotal, resetContext);
+      canLeave = false;
+      updateLeaveButton();
       updateColorBadge();
       updateStatus(myTurn ? 'À vous de jouer !' : `Tour de ${opponent}…`);
       renderBoard();
@@ -455,6 +613,17 @@
       syncBoard(data.board || board, { animate: false });
       myTurn = !!data.your_turn;
       gameFinished = false;
+      myElo = typeof data.your_elo === 'number' ? data.your_elo : myElo;
+      opponentElo = typeof data.opponent_elo === 'number' ? data.opponent_elo : opponentElo;
+      setEloValue(yourEloEl, yourEloDeltaEl, myElo, undefined);
+      setEloValue(opponentEloEl, opponentEloDeltaEl, opponentElo, undefined);
+      opponentEloCard.classList.toggle('hidden', !opponent);
+      resetVotes = 0;
+      hasResetVote = false;
+      resetContext = 'reset';
+      updateResetButtonDisplay(0, resetTotal, resetContext);
+      canLeave = false;
+      updateLeaveButton();
       updateColorBadge();
       if (opponent) {
         updateStatus(myTurn ? 'À vous de jouer !' : `Tour de ${data.next_turn}…`);
@@ -466,22 +635,63 @@
 
     socket.on('move_played', (data) => {
       const shouldAnimate = typeof data.column === 'number';
-      if (!data.winner) {
-        clearVictoryHighlight();
-      }
+      clearVictoryHighlight();
       syncBoard(data.board || board, { animate: shouldAnimate });
+      if (!data.winner && !data.draw) {
+        resetVotes = 0;
+        hasResetVote = false;
+        resetContext = 'reset';
+        updateResetButtonDisplay(0, resetTotal, resetContext);
+      }
       if (data.winner) {
         gameFinished = true;
         myTurn = false;
         const victory = data.winner === pseudo;
-        updateStatus(victory ? '🎉 Vous gagnez la partie !' : `😢 ${data.winner} remporte la partie.`);
+        resetContext = 'rematch';
+        resetVotes = 0;
+        hasResetVote = false;
+        updateResetButtonDisplay(0, resetTotal, resetContext);
+        canLeave = true;
+        updateLeaveButton();
+        if (data.forfeit) {
+          if (victory) {
+            updateStatus(`🏳️ ${data.forfeit} a abandonné. Victoire !`);
+          } else if (data.forfeit === pseudo) {
+            updateStatus('🏳️ Vous abandonnez la partie.');
+          } else {
+            updateStatus(`🏳️ ${data.forfeit} a abandonné la partie.`);
+          }
+        } else {
+          updateStatus(victory ? '🎉 Vous gagnez la partie !' : `😢 ${data.winner} remporte la partie.`);
+        }
       } else if (data.draw) {
         gameFinished = true;
         myTurn = false;
+        resetContext = 'rematch';
+        resetVotes = 0;
+        hasResetVote = false;
+        updateResetButtonDisplay(0, resetTotal, resetContext);
+        canLeave = true;
+        updateLeaveButton();
         updateStatus('🤝 Match nul !');
       } else {
         myTurn = data.next_turn === pseudo;
         updateStatus(myTurn ? 'À vous de jouer !' : `Tour de ${data.next_turn}…`);
+        canLeave = false;
+        updateLeaveButton();
+      }
+      if (data.result && data.result.ratings) {
+        const ratings = data.result.ratings;
+        const mine = ratings[pseudo];
+        if (mine) {
+          myElo = mine.after;
+          setEloValue(yourEloEl, yourEloDeltaEl, myElo, mine.delta);
+        }
+        if (opponent && ratings[opponent]) {
+          const other = ratings[opponent];
+          opponentElo = other.after;
+          setEloValue(opponentEloEl, opponentEloDeltaEl, opponentElo, other.delta);
+        }
       }
       renderBoard();
       if (data.winner) {
@@ -500,12 +710,65 @@
       }
     });
 
+    socket.on('reset_vote_update', (data) => {
+      resetVotes = data && typeof data.votes === 'number' ? data.votes : 0;
+      resetTotal = data && typeof data.total === 'number' ? data.total : resetTotal;
+      resetContext = data && data.context ? data.context : resetContext;
+      updateResetButtonDisplay(resetVotes, resetTotal, resetContext);
+      if (resetVotes === 0) {
+        hasResetVote = false;
+        return;
+      }
+
+      if (resetVotes === resetTotal) {
+        const pendingText = resetContext === 'rematch'
+          ? 'Nouvelle partie en cours de préparation…'
+          : 'Réinitialisation en cours…';
+        updateStatus(pendingText);
+        return;
+      }
+
+      if (hasResetVote) {
+        const waitingText = resetContext === 'rematch'
+          ? 'En attente de votre adversaire pour lancer la nouvelle partie…'
+          : 'En attente de votre adversaire pour réinitialiser…';
+        updateStatus(waitingText);
+      } else {
+        const promptText = resetContext === 'rematch'
+          ? 'Votre adversaire souhaite lancer une nouvelle partie. Cliquez sur « Nouvelle partie » pour accepter.'
+          : 'Votre adversaire souhaite réinitialiser la partie. Cliquez sur « Réinitialiser » pour accepter.';
+        updateStatus(promptText);
+      }
+    });
+
     socket.on('room_error', (data) => {
-      const reason = data && data.message ? data.message : 'Erreur inattendue.';
-      updateStatus(`Erreur : ${reason}`);
-      setTimeout(() => {
-        socket.emit('leave_multiplayer', { room_id: roomId });
-      }, 1500);
+      let message = 'Erreur inattendue.';
+      let shouldLeave = true;
+      if (data && data.message) {
+        switch (data.message) {
+          case 'not_enough_players':
+            message = 'Vous devez être deux pour lancer ou réinitialiser la partie.';
+            shouldLeave = false;
+            break;
+          case 'room_not_found':
+            message = 'Salle introuvable.';
+            break;
+          case 'game_not_active':
+            message = 'La partie n\'est pas active.';
+            break;
+          case 'identification_incomplete':
+            message = 'Identification incomplète. Veuillez vous reconnecter.';
+            break;
+          default:
+            message = `Erreur : ${data.message}`;
+        }
+      }
+      updateStatus(message);
+      if (shouldLeave) {
+        setTimeout(() => {
+          socket.emit('leave_multiplayer', { room_id: roomId });
+        }, 1500);
+      }
     });
 
     socket.on('opponent_left', (data) => {
@@ -513,6 +776,16 @@
       updateStatus(`${name} a quitté la partie.`);
       gameFinished = true;
       myTurn = false;
+      opponent = null;
+      opponentElo = null;
+      setEloValue(opponentEloEl, opponentEloDeltaEl, opponentElo, undefined);
+      opponentEloCard.classList.add('hidden');
+      resetContext = 'rematch';
+      resetVotes = 0;
+      hasResetVote = false;
+      updateResetButtonDisplay(0, resetTotal, resetContext);
+      canLeave = true;
+      updateLeaveButton();
       clearVictoryHighlight();
       renderBoard();
     });
@@ -523,13 +796,19 @@
     });
 
     leaveBtn.addEventListener('click', () => {
+      if (leaveBtn.disabled) return;
       socket.emit('leave_multiplayer', { room_id: roomId });
     });
 
     resetBtn.addEventListener('click', () => {
-      if (gameFinished || !myTurn) {
-        updateStatus('Réinitialisation en cours…');
+      if (hasResetVote) {
+        return;
       }
+      hasResetVote = true;
+      const message = resetContext === 'rematch'
+        ? 'Demande de nouvelle partie envoyée…'
+        : 'Demande de réinitialisation envoyée…';
+      updateStatus(message);
       socket.emit('reset_multiplayer', { room_id: roomId });
     });
 
