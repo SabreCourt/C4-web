@@ -5,6 +5,7 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 import os
 import json
+import random
 import time
 import threading
 import sys
@@ -113,6 +114,146 @@ init_db()
 # Helper functions
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+# --- Jeu du pendu ---
+MAX_PENDU_ATTEMPTS = 8
+PENDU_FOLDER = os.path.join(app.root_path, "templates", "pendu")
+PENDU_WORD_SANITIZE_REGEX = re.compile(r"[^A-Za-zÀ-ÖØ-öø-ÿ' -]")
+PENDU_DEFAULT_WORDS = [
+    "PYTHON",
+    "FLASK",
+    "ALGORITHME",
+    "ORDINATEUR",
+    "DEVELOPPEMENT",
+    "INTELLIGENCE",
+    "PROGRAMMATION",
+    "LOGICIEL",
+    "BASE DE DONNEES",
+    "VARIABLE",
+]
+
+
+def load_pendu_words():
+    words = []
+
+    if os.path.isdir(PENDU_FOLDER):
+        for entry in sorted(os.listdir(PENDU_FOLDER)):
+            if not entry.lower().endswith(".txt"):
+                continue
+
+            file_path = os.path.join(PENDU_FOLDER, entry)
+            try:
+                with open(file_path, encoding="utf-8") as fh:
+                    for raw_line in fh:
+                        cleaned = PENDU_WORD_SANITIZE_REGEX.sub("", raw_line.strip())
+                        cleaned = re.sub(r"\s+", " ", cleaned).strip().upper()
+                        if cleaned and any(ch.isalpha() for ch in cleaned):
+                            words.append(cleaned)
+            except OSError:
+                continue
+
+    if not words:
+        words = PENDU_DEFAULT_WORDS[:]
+
+    # Supprime les doublons tout en conservant l'ordre
+    unique_words = []
+    seen = set()
+    for word in words:
+        if word not in seen:
+            unique_words.append(word)
+            seen.add(word)
+
+    return unique_words
+
+
+def start_new_pendu_game():
+    words = load_pendu_words()
+    chosen_word = random.choice(words)
+
+    session.setdefault("pendu_score", 0)
+    session["pendu_game"] = {
+        "word": chosen_word,
+        "guessed_letters": [],
+        "remaining_attempts": MAX_PENDU_ATTEMPTS,
+        "status": "playing",
+    }
+    session.modified = True
+    return session["pendu_game"]
+
+
+def get_pendu_state():
+    state = session.get("pendu_game")
+    if not state:
+        state = start_new_pendu_game()
+    session.setdefault("pendu_score", 0)
+    return state
+
+
+def serialize_pendu_state(state):
+    word = state.get("word", "")
+    guessed_letters = [letter.upper() for letter in state.get("guessed_letters", [])]
+    guessed_set = set(guessed_letters)
+    remaining_attempts = state.get("remaining_attempts", MAX_PENDU_ATTEMPTS)
+    status = state.get("status", "playing")
+
+    display_letters = []
+    for char in word:
+        if char.isalpha():
+            display_letters.append(char if char in guessed_set else "_")
+        else:
+            display_letters.append(char)
+
+    masked_word = " ".join(display_letters)
+    target_letters = {char for char in word if char.isalpha()}
+    attempted_letters = guessed_letters
+    correct_letters = [letter for letter in attempted_letters if letter in target_letters]
+    incorrect_letters = [letter for letter in attempted_letters if letter not in target_letters]
+
+    reveal_word = word if status != "playing" else None
+
+    return {
+        "masked_word": masked_word,
+        "remaining_attempts": remaining_attempts,
+        "max_attempts": MAX_PENDU_ATTEMPTS,
+        "status": status,
+        "attempted_letters": attempted_letters,
+        "correct_letters": correct_letters,
+        "incorrect_letters": incorrect_letters,
+        "score": session.get("pendu_score", 0),
+        "solution": reveal_word,
+        "pseudo": session.get("pseudo"),
+    }
+
+
+def process_pendu_guess(letter):
+    state = get_pendu_state()
+
+    if state["status"] != "playing":
+        return state, "La partie est terminée. Lancez une nouvelle partie pour continuer."
+
+    normalized_letter = letter.strip().upper()
+    if not normalized_letter or len(normalized_letter) != 1 or not normalized_letter.isalpha():
+        return state, "Veuillez proposer une lettre valide."
+
+    if normalized_letter in state["guessed_letters"]:
+        return state, f"La lettre {normalized_letter} a déjà été testée."
+
+    state["guessed_letters"].append(normalized_letter)
+
+    if normalized_letter not in state["word"]:
+        state["remaining_attempts"] = max(0, state["remaining_attempts"] - 1)
+        if state["remaining_attempts"] == 0:
+            state["status"] = "lost"
+            session["pendu_score"] = 0
+    else:
+        word_letters = {char for char in state["word"] if char.isalpha()}
+        if word_letters.issubset(set(state["guessed_letters"])):
+            state["status"] = "won"
+            session["pendu_score"] = session.get("pendu_score", 0) + 1
+
+    session.modified = True
+    return state, None
 
 
 def create_user(pseudo: str, email: str, password: str):
@@ -392,6 +533,39 @@ solver_lock = threading.Lock()
 @login_required
 def menu():
     return render_template("menu.html", pseudo=session["pseudo"])
+
+
+@app.route("/pendu")
+@login_required
+def pendu():
+    state = serialize_pendu_state(get_pendu_state())
+    return render_template("pendu/index.html", pendu_state=state)
+
+
+@app.route("/pendu/state")
+@login_required
+def pendu_state():
+    state = serialize_pendu_state(get_pendu_state())
+    return jsonify({"state": state})
+
+
+@app.route("/pendu/deviner", methods=["POST"])
+@login_required
+def pendu_guess():
+    data = request.get_json(silent=True) or {}
+    letter = data.get("letter", "")
+    state, message = process_pendu_guess(letter)
+    payload = {"state": serialize_pendu_state(state)}
+    if message:
+        payload["message"] = message
+    return jsonify(payload)
+
+
+@app.route("/pendu/nouvelle-partie", methods=["POST"])
+@login_required
+def pendu_new_game():
+    start_new_pendu_game()
+    return jsonify({"state": serialize_pendu_state(get_pendu_state())})
 
 
 @app.route("/lobby")

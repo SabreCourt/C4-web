@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pendu</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: rgba(15, 23, 42, 0.85);
+      --primary: #38bdf8;
+      --accent: #f97316;
+      --success: #4ade80;
+      --danger: #f87171;
+      --text: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top, #1e293b, #0f172a 70%);
+      color: var(--text);
+    }
+
+    .game-wrapper {
+      width: min(960px, 92vw);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 28px;
+      padding: 32px;
+      border-radius: 26px;
+      background: linear-gradient(135deg, rgba(30, 64, 175, 0.45), rgba(12, 74, 110, 0.4));
+      box-shadow: 0 20px 45px rgba(8, 47, 73, 0.45);
+      backdrop-filter: blur(20px);
+    }
+
+    .column {
+      background: var(--card);
+      border-radius: 22px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    .score, .attempts {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.16);
+    }
+
+    .score span, .attempts span {
+      font-size: 1.2rem;
+    }
+
+    .word-display {
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      letter-spacing: 0.35em;
+      text-align: center;
+      padding: 28px 18px;
+      border-radius: 18px;
+      background: rgba(148, 163, 184, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      white-space: pre-wrap;
+    }
+
+    .letters-panel h2 {
+      margin: 0 0 8px 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+
+    .letters-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .letter-pill {
+      min-width: 38px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      text-align: center;
+      font-weight: 600;
+      background: rgba(148, 163, 184, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .letter-pill.correct {
+      background: rgba(74, 222, 128, 0.16);
+      border-color: rgba(74, 222, 128, 0.45);
+      color: var(--success);
+    }
+
+    .letter-pill.incorrect {
+      background: rgba(248, 113, 113, 0.14);
+      border-color: rgba(248, 113, 113, 0.45);
+      color: var(--danger);
+    }
+
+    .input-card {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 22px;
+      border-radius: 18px;
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .input-card label {
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .input-group input {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(15, 23, 42, 0.65);
+      color: var(--text);
+      font-size: 1.1rem;
+      text-transform: uppercase;
+    }
+
+    .input-group button {
+      padding: 12px 24px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), #0ea5e9);
+      color: #031527;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .input-group button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 20px rgba(56, 189, 248, 0.3);
+    }
+
+    .message {
+      min-height: 32px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .message.success {
+      color: var(--success);
+    }
+
+    .message.error {
+      color: var(--danger);
+    }
+
+    .new-game {
+      align-self: flex-start;
+      padding: 12px 24px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #fb923c);
+      color: #1f2937;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .new-game:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 20px rgba(249, 115, 22, 0.35);
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 0.95rem;
+    }
+
+    .footer-links a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-links a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 700px) {
+      .game-wrapper {
+        padding: 24px;
+      }
+
+      .column {
+        padding: 22px;
+      }
+
+      .word-display {
+        letter-spacing: 0.25em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-wrapper">
+    <div class="column">
+      <div class="header">
+        <h1>Jeu du Pendu</h1>
+        <div class="score">Série&nbsp;: <span id="pendu-score">0</span></div>
+        <div class="attempts">Essais&nbsp;restants&nbsp;: <span id="pendu-attempts">0</span></div>
+      </div>
+      <div class="word-display" id="pendu-word">_ _ _ _</div>
+      <div class="letters-panel">
+        <h2>Lettres testées</h2>
+        <div class="letters-grid" id="letters-grid"></div>
+      </div>
+    </div>
+    <div class="column">
+      <div class="input-card">
+        <label for="guess-input">Propose une nouvelle lettre</label>
+        <form id="guess-form" autocomplete="off">
+          <div class="input-group">
+            <input id="guess-input" name="letter" maxlength="1" autocomplete="off" autofocus required />
+            <button type="submit">Valider</button>
+          </div>
+        </form>
+        <p class="message" id="pendu-message"></p>
+        <button class="new-game" id="new-game" hidden>Nouvelle partie</button>
+      </div>
+      <div class="footer-links">
+        <a href="{{ url_for('menu') }}">⟵ Retour au menu</a>
+        <span id="pendu-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const INITIAL_STATE = {{ pendu_state|tojson }};
+    let currentState = INITIAL_STATE;
+    const endpoints = {
+      guess: "{{ url_for('pendu_guess') }}",
+      newGame: "{{ url_for('pendu_new_game') }}",
+      state: "{{ url_for('pendu_state') }}"
+    };
+
+    const wordElement = document.getElementById('pendu-word');
+    const attemptsElement = document.getElementById('pendu-attempts');
+    const scoreElement = document.getElementById('pendu-score');
+    const messageElement = document.getElementById('pendu-message');
+    const lettersGrid = document.getElementById('letters-grid');
+    const guessForm = document.getElementById('guess-form');
+    const guessInput = document.getElementById('guess-input');
+    const newGameButton = document.getElementById('new-game');
+    const statusElement = document.getElementById('pendu-status');
+
+    function renderState(state, extraMessage) {
+      currentState = state;
+      wordElement.textContent = state.masked_word;
+      attemptsElement.textContent = `${state.remaining_attempts}/${state.max_attempts}`;
+      scoreElement.textContent = state.score;
+
+      lettersGrid.innerHTML = '';
+      state.attempted_letters.forEach((letter) => {
+        const pill = document.createElement('span');
+        pill.classList.add('letter-pill');
+        if (state.correct_letters.includes(letter)) {
+          pill.classList.add('correct');
+        } else if (state.incorrect_letters.includes(letter)) {
+          pill.classList.add('incorrect');
+        }
+        pill.textContent = letter;
+        lettersGrid.appendChild(pill);
+      });
+
+      let finalMessage = extraMessage || '';
+      statusElement.textContent = '';
+      messageElement.classList.remove('success', 'error');
+
+      if (state.status === 'won') {
+        finalMessage = `Bravo ! Le mot était « ${state.solution} ».`;
+        messageElement.classList.add('success');
+        statusElement.textContent = '🎉 Victoire';
+        newGameButton.hidden = false;
+        guessInput.disabled = true;
+      } else if (state.status === 'lost') {
+        finalMessage = `Dommage ! Le mot était « ${state.solution} ».`;
+        messageElement.classList.add('error');
+        statusElement.textContent = '💥 Défaite';
+        newGameButton.hidden = false;
+        guessInput.disabled = true;
+      } else {
+        newGameButton.hidden = true;
+        guessInput.disabled = false;
+        guessInput.focus();
+      }
+
+      messageElement.textContent = finalMessage || '';
+    }
+
+    async function submitGuess(letter) {
+      try {
+        const response = await fetch(endpoints.guess, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ letter })
+        });
+        const payload = await response.json();
+        const newState = payload.state;
+        renderState(newState, payload.message);
+      } catch (error) {
+        renderState(currentState, "Une erreur est survenue. Réessayez.");
+      }
+    }
+
+    async function startNewGame() {
+      try {
+        const response = await fetch(endpoints.newGame, {
+          method: 'POST'
+        });
+        const payload = await response.json();
+        renderState(payload.state, 'Nouvelle partie ! Bonne chance.');
+        guessInput.value = '';
+        guessInput.focus();
+      } catch (error) {
+        messageElement.textContent = "Impossible de démarrer une nouvelle partie pour le moment.";
+        messageElement.classList.add('error');
+      }
+    }
+
+    guessForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const value = (guessInput.value || '').trim();
+      if (!value) {
+        return;
+      }
+      submitGuess(value);
+      guessInput.value = '';
+      guessInput.focus();
+    });
+
+    newGameButton.addEventListener('click', () => {
+      startNewGame();
+    });
+
+    renderState(INITIAL_STATE);
+  </script>
+</body>
+</html>

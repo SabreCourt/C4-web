@@ -104,12 +104,14 @@
 <body>
   <div class="menu">
     <h1>Bienvenue {{ pseudo }}</h1>
-    <p>Sélectionnez un jeu pour commencer. Seul le Puissance 4 est disponible pour le moment.</p>
+    <p>Sélectionnez un jeu pour commencer. Puissance 4 et le Pendu sont disponibles !</p>
     <div class="games">
       <form method="GET" action="{{ url_for('lobby') }}">
         <button type="submit" class="game-btn primary">🎮 Puissance 4</button>
       </form>
-      <button type="button" class="game-btn" disabled>🔤 Pendu (bientôt)</button>
+      <form method="GET" action="{{ url_for('pendu') }}">
+        <button type="submit" class="game-btn primary">🔤 Pendu</button>
+      </form>
       <button type="button" class="game-btn" disabled>🧱 Tetris (bientôt)</button>
       <button type="button" class="game-btn" disabled>♞ Échecs (bientôt)</button>
     </div>
