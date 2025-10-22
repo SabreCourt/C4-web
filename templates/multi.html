@@ -107,30 +107,49 @@
       transition: transform 0.12s ease, box-shadow 0.12s ease;
       overflow: hidden;
     }
-    .cell::after {
-      content: '';
-      position: absolute;
-      inset: 14%;
-      border-radius: 50%;
-      background: transparent;
-      transition: background 0.2s ease, box-shadow 0.2s ease;
-    }
     .cell:hover {
       transform: translateY(-4px);
       box-shadow: inset 0 6px 14px rgba(0,0,0,0.85), 0 8px 20px rgba(30,144,255,0.18);
-    }
-    .cell.rouge::after {
-      background: radial-gradient(circle at 35% 30%, #ff6b6b, #e63946 65%);
-      box-shadow: inset 0 4px 6px rgba(0,0,0,0.45);
-    }
-    .cell.jaune::after {
-      background: radial-gradient(circle at 35% 30%, #ffd19a, #f4a261 65%);
-      box-shadow: inset 0 4px 6px rgba(0,0,0,0.45);
     }
     .cell.disabled {
       cursor: default;
       box-shadow: inset 0 6px 14px rgba(0,0,0,0.9), 0 3px 10px rgba(0,0,0,0.25);
     }
+    .cell.disabled:hover {
+      transform: none;
+      box-shadow: inset 0 6px 14px rgba(0,0,0,0.9), 0 3px 10px rgba(0,0,0,0.25);
+    }
+    .token {
+      position: absolute;
+      inset: 2%;
+      border-radius: 50%;
+      background: transparent;
+      opacity: 0;
+      transform: translateY(0);
+      transition: background 0.18s ease, box-shadow 0.18s ease, opacity 0.2s ease;
+      pointer-events: none;
+    }
+    .token.visible {
+      opacity: 1;
+    }
+    .token.rouge {
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, #e63946 65%);
+      box-shadow: inset 0 4px 6px rgba(0,0,0,0.45);
+    }
+    .token.jaune {
+      background: radial-gradient(circle at 35% 30%, #ffd19a, #f4a261 65%);
+      box-shadow: inset 0 4px 6px rgba(0,0,0,0.45);
+    }
+      
+    .token.drop {
+      animation: descendre 0.32s ease-in forwards;
+    }
+
+    @keyframes descendre {
+      from { transform: translateY(-420px); }
+      to { transform: translateY(0); }
+    }
+
     .actions {
       display: flex;
       justify-content: center;
@@ -184,6 +203,28 @@
         gap: 16px;
       }
     }
+
+    .token.victoire-rouge {
+      animation: pulse-rouge 1s ease-in-out infinite alternate;
+      box-shadow: 0 0 4px 2px rgba(255, 75, 75, 0.25), inset 0 4px 6px rgba(0,0,0,0.45);
+      filter: brightness(1.05);
+    }
+
+    .token.victoire-jaune {
+      animation: pulse-jaune 1s ease-in-out infinite alternate;
+      box-shadow: 0 0 4px 2px rgba(255, 209, 102, 0.25), inset 0 4px 6px rgba(0,0,0,0.45);
+      filter: brightness(1.05);
+    }
+
+    @keyframes pulse-rouge {
+      from { transform: translateY(0) scale(1); filter: brightness(1.0); box-shadow: 0 0 3px 1px rgba(255, 75, 75, 0.2), inset 0 4px 6px rgba(0,0,0,0.45); }
+      to   { transform: translateY(0) scale(1.05); filter: brightness(1.15); box-shadow: 0 0 6px 3px rgba(255, 75, 75, 0.35), inset 0 4px 6px rgba(0,0,0,0.45); }
+    }
+
+    @keyframes pulse-jaune {
+      from { transform: translateY(0) scale(1); filter: brightness(1.0); box-shadow: 0 0 3px 1px rgba(255, 209, 102, 0.2), inset 0 4px 6px rgba(0,0,0,0.45); }
+      to   { transform: translateY(0) scale(1.05); filter: brightness(1.15); box-shadow: 0 0 6px 3px rgba(255, 209, 102, 0.35), inset 0 4px 6px rgba(0,0,0,0.45); }
+    }
   </style>
 </head>
 <body>
@@ -233,35 +274,68 @@
         for (let col = 0; col < COLS; col++) {
           const cell = document.createElement('div');
           cell.className = 'cell disabled';
+          cell.dataset.row = row;
           cell.dataset.col = col;
+          const token = document.createElement('div');
+          token.className = 'token';
+          cell.appendChild(token);
           boardEl.appendChild(cell);
         }
       }
     }
 
-    function syncBoard(newBoard) {
-      board = newBoard.map(row => row.slice());
+    function cloneBoardState(source) {
+      return source.map(row => row.slice());
+    }
+
+    let previousBoard = cloneBoardState(board);
+    let highlightedTokens = [];
+    let animateDrops = false;
+
+    function syncBoard(newBoard, { animate = false } = {}) {
+      previousBoard = cloneBoardState(board);
+      board = cloneBoardState(newBoard);
+      animateDrops = animate;
     }
 
     function renderBoard() {
-      const cells = boardEl.querySelectorAll('.cell');
-      cells.forEach(cell => {
-        cell.classList.remove('rouge', 'jaune');
-        if (!myTurn || gameFinished) {
-          cell.classList.add('disabled');
-        } else {
-          cell.classList.remove('disabled');
-        }
-      });
       for (let row = 0; row < ROWS; row++) {
         for (let col = 0; col < COLS; col++) {
           const token = board[row][col];
-          if (token === 0) continue;
           const idx = row * COLS + col;
           const cell = boardEl.children[idx];
-          cell.classList.add(token === 1 ? 'rouge' : 'jaune');
+          if (!cell) continue;
+
+          if (!myTurn || gameFinished) {
+            cell.classList.add('disabled');
+          } else {
+            cell.classList.remove('disabled');
+          }
+
+          const tokenEl = cell.querySelector('.token');
+          if (!tokenEl) continue;
+
+          if (token === 0) {
+            tokenEl.className = 'token';
+            continue;
+          }
+
+          tokenEl.classList.add('visible');
+          tokenEl.classList.toggle('rouge', token === 1);
+          tokenEl.classList.toggle('jaune', token === 2);
+
+          if (animateDrops && previousBoard[row][col] === 0) {
+            tokenEl.classList.remove('drop');
+            // Force reflow to restart animation when necessary
+            void tokenEl.offsetWidth;
+            tokenEl.classList.add('drop');
+            tokenEl.addEventListener('animationend', () => {
+              tokenEl.classList.remove('drop');
+            }, { once: true });
+          }
         }
       }
+      animateDrops = false;
     }
 
     function updateStatus(text) {
@@ -287,11 +361,72 @@
       });
     });
 
+    function clearVictoryHighlight() {
+      highlightedTokens.forEach(tokenEl => {
+        tokenEl.classList.remove('victoire-rouge', 'victoire-jaune');
+      });
+      highlightedTokens = [];
+    }
+
+    function applyVictoryHighlight(coords, tokenValue) {
+      clearVictoryHighlight();
+      const className = tokenValue === 1 ? 'victoire-rouge' : 'victoire-jaune';
+      coords.forEach(([row, col]) => {
+        const idx = row * COLS + col;
+        const cell = boardEl.children[idx];
+        if (!cell) return;
+        const tokenEl = cell.querySelector('.token');
+        if (tokenEl && tokenEl.classList.contains('visible')) {
+          tokenEl.classList.add(className);
+          highlightedTokens.push(tokenEl);
+        }
+      });
+    }
+
+    function findVictoryCoords(state) {
+      const directions = [
+        [0, 1],
+        [1, 0],
+        [1, 1],
+        [1, -1],
+      ];
+
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const value = state[row][col];
+          if (value === 0) continue;
+
+          for (const [dr, dc] of directions) {
+            const coords = [[row, col]];
+            let r = row;
+            let c = col;
+            let count = 1;
+
+            while (count < 4) {
+              r += dr;
+              c += dc;
+              if (r < 0 || r >= ROWS || c < 0 || c >= COLS) break;
+              if (state[r][c] !== value) break;
+              coords.push([r, c]);
+              count += 1;
+            }
+
+            if (count === 4) {
+              return { token: value, coords };
+            }
+          }
+        }
+      }
+
+      return null;
+    }
+
     socket.on('waiting_player', (data) => {
       myColor = data.color;
       opponent = null;
       opponentEl.textContent = 'En attente d\'un adversaire…';
-      syncBoard(data.board || board);
+      clearVictoryHighlight();
+      syncBoard(data.board || board, { animate: false });
       myTurn = false;
       gameFinished = false;
       updateColorBadge();
@@ -303,7 +438,8 @@
       myColor = data.color;
       opponent = data.opponent;
       opponentEl.textContent = `Adversaire : ${opponent}`;
-      syncBoard(data.board || board);
+      clearVictoryHighlight();
+      syncBoard(data.board || board, { animate: false });
       myTurn = !!data.your_turn;
       gameFinished = false;
       updateColorBadge();
@@ -315,7 +451,8 @@
       myColor = data.color;
       opponent = data.opponent || null;
       opponentEl.textContent = opponent ? `Adversaire : ${opponent}` : '';
-      syncBoard(data.board || board);
+      clearVictoryHighlight();
+      syncBoard(data.board || board, { animate: false });
       myTurn = !!data.your_turn;
       gameFinished = false;
       updateColorBadge();
@@ -328,7 +465,11 @@
     });
 
     socket.on('move_played', (data) => {
-      syncBoard(data.board || board);
+      const shouldAnimate = typeof data.column === 'number';
+      if (!data.winner) {
+        clearVictoryHighlight();
+      }
+      syncBoard(data.board || board, { animate: shouldAnimate });
       if (data.winner) {
         gameFinished = true;
         myTurn = false;
@@ -343,6 +484,12 @@
         updateStatus(myTurn ? 'À vous de jouer !' : `Tour de ${data.next_turn}…`);
       }
       renderBoard();
+      if (data.winner) {
+        const victory = findVictoryCoords(board);
+        if (victory) {
+          applyVictoryHighlight(victory.coords, victory.token);
+        }
+      }
     });
 
     socket.on('move_rejected', (data) => {
@@ -366,6 +513,7 @@
       updateStatus(`${name} a quitté la partie.`);
       gameFinished = true;
       myTurn = false;
+      clearVictoryHighlight();
       renderBoard();
     });
 
