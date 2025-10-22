@@ -164,23 +164,24 @@
     }
     .next-pieces {
       display: grid;
-      gap: 8px;
+      gap: 6px;
     }
     .preview-piece {
-      display: grid;
-      grid-template-rows: repeat(var(--rows), 1fr);
-      grid-template-columns: repeat(var(--cols), 1fr);
+      --cell-size: 14px;
+      display: inline-grid;
+      grid-template-rows: repeat(var(--rows), var(--cell-size));
+      grid-template-columns: repeat(var(--cols), var(--cell-size));
       background: rgba(7, 18, 32, 0.75);
       padding: 6px;
       border-radius: 10px;
-      gap: 4px;
-      justify-items: center;
-      align-items: center;
+      gap: 2px;
+      justify-content: center;
+      align-content: center;
     }
     .preview-cell {
-      width: 18px;
-      height: 18px;
-      border-radius: 5px;
+      width: var(--cell-size);
+      height: var(--cell-size);
+      border-radius: 4px;
       background: rgba(255, 255, 255, 0.08);
     }
     .preview-cell.filled {
@@ -436,6 +437,32 @@
       Z: '#eb4d4b'
     };
 
+    function trimMatrix(matrix) {
+      const rows = matrix.length;
+      const cols = matrix[0].length;
+      let top = rows;
+      let bottom = -1;
+      let left = cols;
+      let right = -1;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (!matrix[r][c]) continue;
+          if (r < top) top = r;
+          if (r > bottom) bottom = r;
+          if (c < left) left = c;
+          if (c > right) right = c;
+        }
+      }
+      if (bottom < top || right < left) {
+        return matrix.map(row => row.slice());
+      }
+      const trimmed = [];
+      for (let r = top; r <= bottom; r++) {
+        trimmed.push(matrix[r].slice(left, right + 1));
+      }
+      return trimmed;
+    }
+
     function createMatrix(rows, cols) {
       return Array.from({ length: rows }, () => Array(cols).fill(0));
     }
@@ -471,7 +498,7 @@
         this.canvas.height = this.rows * this.blockSize;
         this.previewContainer = options.previewContainer || null;
         this.pieceSource = options.pieceSource;
-        this.previewSize = options.previewSize || 5;
+        this.previewSize = typeof options.previewSize === 'number' ? options.previewSize : 3;
         this.onBoardChange = options.onBoardChange || (() => {});
         this.onGameOver = options.onGameOver || (() => {});
         this.onScoreChange = options.onScoreChange || (() => {});
@@ -485,6 +512,7 @@
         this.finished = false;
         this.score = 0;
         this.lines = 0;
+        this.lastClearWasTetris = false;
         this.lastTime = 0;
         this.dropCounter = 0;
         this.startTimeMs = null;
@@ -513,11 +541,13 @@
         this.previewQueue.slice(0, this.previewSize).forEach(type => {
           const matrix = TETROMINOS[type];
           if (!matrix) return;
+          const trimmed = trimMatrix(matrix);
+          if (!trimmed.length || !trimmed[0].length) return;
           const pieceEl = document.createElement('div');
           pieceEl.className = 'preview-piece';
-          pieceEl.style.setProperty('--rows', matrix.length);
-          pieceEl.style.setProperty('--cols', matrix[0].length);
-          matrix.forEach(row => {
+          pieceEl.style.setProperty('--rows', trimmed.length);
+          pieceEl.style.setProperty('--cols', trimmed[0].length);
+          trimmed.forEach(row => {
             row.forEach(cell => {
               const cellEl = document.createElement('span');
               cellEl.className = 'preview-cell';
@@ -566,6 +596,11 @@
         this.finished = false;
         this.score = 0;
         this.lines = 0;
+        this.board = createMatrix(this.rows, this.cols);
+        this.current = null;
+        this.previewQueue = [];
+        this.fillPreview();
+        this.lastClearWasTetris = false;
         this.dropInterval = this.initialDropInterval;
         this.dropCounter = 0;
         this.startTimeMs = performance.now();
@@ -633,13 +668,13 @@
         if (!this.current) return false;
         const newRow = this.current.row + (dy || 0);
         const newCol = this.current.col + (dx || 0);
-      if (this.isValidPosition(this.current.matrix, newRow, newCol)) {
-        this.current.row = newRow;
-        this.current.col = newCol;
-        this.draw();
-        return true;
-      }
-      return false;
+        if (this.isValidPosition(this.current.matrix, newRow, newCol)) {
+          this.current.row = newRow;
+          this.current.col = newCol;
+          this.draw();
+          return true;
+        }
+        return false;
       }
 
       hardDrop() {
@@ -704,12 +739,23 @@
             this.board[boardRow][boardCol] = type;
           }
         }
-        const cleared = this.clearLines();
+        const wasBackToBack = this.lastClearWasTetris;
+        const { count: cleared, allClear } = this.clearLines();
         if (cleared > 0) {
-          const scoring = [0, 100, 300, 500, 800];
-          this.score += scoring[cleared] || cleared * 200;
+          const baseScores = { 1: 100, 2: 300, 3: 500, 4: 800 };
+          const allClearScores = { 1: 800, 2: 1200, 3: 1800, 4: 2000 };
+          const isTetris = cleared === 4;
+          let points = baseScores[cleared] || 0;
+          if (allClear) {
+            points = allClearScores[cleared] || points;
+            if (isTetris && wasBackToBack) {
+              points = 3200;
+            }
+          }
+          this.score += points;
           this.lines += cleared;
           this.onScoreChange({ score: this.score, lines: this.lines });
+          this.lastClearWasTetris = isTetris;
         }
         if (!this.spawnPiece()) {
           this.draw();
@@ -730,7 +776,8 @@
             row++;
           }
         }
-        return cleared;
+        const allClear = cleared > 0 && this.board.every(r => r.every(cell => !cell));
+        return { count: cleared, allClear };
       }
 
       gameOver(reason = 'top_out') {
