@@ -10,6 +10,9 @@
     :root {
       color-scheme: dark;
     }
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
       min-height: 100vh;
@@ -19,16 +22,22 @@
       background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #f0f4f8;
+      overflow: hidden;
+      padding: 16px;
     }
     .container {
-      width: 95%;
-      max-width: 760px;
-      padding: 32px;
+      width: min(92vw, 820px);
+      padding: 28px;
       background: rgba(255,255,255,0.06);
       border-radius: 18px;
       box-shadow: 0 14px 34px rgba(0,0,0,0.45);
       backdrop-filter: blur(12px);
       animation: fadeIn 0.5s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-height: calc(100vh - 32px);
+      overflow: hidden;
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(20px); }
@@ -70,60 +79,82 @@
       border: 1px solid rgba(244, 162, 97, 0.4);
     }
     #status {
-      margin-bottom: 20px;
       font-size: 1rem;
       color: rgba(240, 244, 248, 0.9);
       min-height: 24px;
     }
     .board {
+      width: min(640px, 85vw, calc(max(0px, 100vh - 220px) * 7 / 6));
+      max-height: max(0px, calc(100vh - 220px));
+      aspect-ratio: 7 / 6;
       display: grid;
-      grid-template-columns: repeat(7, minmax(60px, 1fr));
-      gap: 10px;
-      padding: 18px;
+      grid-template-columns: repeat(7, 1fr);
+      gap: clamp(6px, 1.2vw, 14px);
+      padding: clamp(12px, 1.8vw, 22px);
       border-radius: 18px;
       background: rgba(0, 0, 0, 0.22);
       box-shadow: inset 0 8px 26px rgba(0,0,0,0.45);
+      margin: 0 auto;
     }
     .cell {
       width: 100%;
-      padding-top: 100%;
-      position: relative;
+      aspect-ratio: 1 / 1;
       border-radius: 50%;
       background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
-      box-shadow: inset 0 6px 14px rgba(0,0,0,0.9), 0 6px 18px rgba(0,0,0,0.35);
+      box-shadow: inset 0 6px 14px rgba(0,0,0,0.85), 0 4px 10px rgba(0,0,0,0.35);
       cursor: pointer;
-      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    .cell::after {
-      content: '';
-      position: absolute;
-      inset: 14%;
-      border-radius: 50%;
-      background: transparent;
-      transition: background 0.2s ease, box-shadow 0.2s ease;
-    }
-    .cell:hover {
+    .cell:hover:not(.rouge):not(.jaune) {
       transform: translateY(-4px);
-      box-shadow: inset 0 6px 14px rgba(0,0,0,0.85), 0 8px 20px rgba(30,144,255,0.18);
+      background: rgba(255,255,255,0.08);
+      box-shadow: 0 0 6px rgba(255,255,255,0.15);
     }
-    .cell.rouge::after {
-      background: radial-gradient(circle at 35% 30%, #ff6b6b, #e63946 65%);
-      box-shadow: inset 0 4px 6px rgba(0,0,0,0.45);
+    .cell.rouge {
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, #e63946 60%);
+      box-shadow: 0 6px 20px rgba(230,57,71,0.18), inset 0 3px 6px rgba(0,0,0,0.45);
     }
-    .cell.jaune::after {
-      background: radial-gradient(circle at 35% 30%, #ffd19a, #f4a261 65%);
-      box-shadow: inset 0 4px 6px rgba(0,0,0,0.45);
+    .cell.jaune {
+      background: radial-gradient(circle at 35% 30%, #ffd19a, #f4a261 60%);
+      box-shadow: 0 6px 20px rgba(244,162,97,0.13), inset 0 3px 6px rgba(0,0,0,0.45);
     }
     .cell.disabled {
       cursor: default;
       box-shadow: inset 0 6px 14px rgba(0,0,0,0.9), 0 3px 10px rgba(0,0,0,0.25);
     }
+    .cell.chute {
+      animation: descendre 0.32s ease-in forwards;
+    }
+    @keyframes descendre {
+      from { transform: translateY(-420px); }
+      to { transform: translateY(0); }
+    }
+    .cell.victoire-rouge {
+      animation: pulse-rouge 1s ease-in-out infinite alternate;
+      box-shadow: 0 0 4px 2px rgba(255, 75, 75, 0.25);
+      filter: brightness(1.05);
+    }
+    .cell.victoire-jaune {
+      animation: pulse-jaune 1s ease-in-out infinite alternate;
+      box-shadow: 0 0 4px 2px rgba(255, 209, 102, 0.25);
+      filter: brightness(1.05);
+    }
+    @keyframes pulse-rouge {
+      from { transform: scale(1); filter: brightness(1.0); box-shadow: 0 0 3px 1px rgba(255, 75, 75, 0.2); }
+      to   { transform: scale(1.03); filter: brightness(1.15); box-shadow: 0 0 6px 3px rgba(255, 75, 75, 0.35); }
+    }
+    @keyframes pulse-jaune {
+      from { transform: scale(1); filter: brightness(1.0); box-shadow: 0 0 3px 1px rgba(255, 209, 102, 0.2); }
+      to   { transform: scale(1.03); filter: brightness(1.15); box-shadow: 0 0 6px 3px rgba(255, 209, 102, 0.35); }
+    }
     .actions {
-      margin-top: 26px;
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 12px;
     }
     .actions button, .actions a {
       padding: 12px 20px;
@@ -133,6 +164,14 @@
       font-weight: 600;
       font-size: 1rem;
       transition: transform 0.18s ease, opacity 0.18s ease;
+    }
+    #reset {
+      background: linear-gradient(90deg, #1E90FF, #00c6ff);
+      color: #1b2735;
+    }
+    #reset:hover {
+      transform: translateY(-2px);
+      opacity: 0.95;
     }
     #leave {
       background: linear-gradient(90deg, #ff5f6d, #ffc371);
@@ -156,9 +195,12 @@
       color: rgba(240,244,248,0.75);
     }
     @media (max-width: 640px) {
-      .board {
-        gap: 8px;
-        padding: 14px;
+      body {
+        padding: 12px;
+      }
+      .container {
+        padding: 24px;
+        gap: 16px;
       }
     }
   </style>
@@ -178,6 +220,7 @@
     <div id="status">Connexion en cours…</div>
     <div class="board" id="board"></div>
     <div class="actions">
+      <button id="reset">🔄 Réinitialiser</button>
       <button id="leave">Quitter la partie</button>
       <a href="/lobby_multi" class="back">Retour au lobby</a>
     </div>
@@ -195,6 +238,7 @@
     const opponentEl = document.getElementById('opponent');
     const colorBadge = document.getElementById('color-badge');
     const leaveBtn = document.getElementById('leave');
+    const resetBtn = document.getElementById('reset');
 
     let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     let myColor = null;
@@ -208,6 +252,7 @@
         for (let col = 0; col < COLS; col++) {
           const cell = document.createElement('div');
           cell.className = 'cell disabled';
+          cell.dataset.row = row;
           cell.dataset.col = col;
           boardEl.appendChild(cell);
         }
@@ -221,8 +266,10 @@
     function renderBoard() {
       const cells = boardEl.querySelectorAll('.cell');
       cells.forEach(cell => {
-        cell.classList.remove('rouge', 'jaune');
-        if (!myTurn || gameFinished) {
+        cell.classList.remove('rouge', 'jaune', 'chute');
+        const col = Number(cell.dataset.col);
+        const columnFull = board[0][col] !== 0;
+        if (!myTurn || gameFinished || columnFull) {
           cell.classList.add('disabled');
         } else {
           cell.classList.remove('disabled');
@@ -232,11 +279,76 @@
         for (let col = 0; col < COLS; col++) {
           const token = board[row][col];
           if (token === 0) continue;
-          const idx = row * COLS + col;
-          const cell = boardEl.children[idx];
+          const cell = boardEl.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+          if (!cell) continue;
           cell.classList.add(token === 1 ? 'rouge' : 'jaune');
         }
       }
+    }
+
+    function clearVictoryHighlights() {
+      boardEl.querySelectorAll('.cell.victoire-rouge, .cell.victoire-jaune').forEach(cell => {
+        cell.classList.remove('victoire-rouge', 'victoire-jaune');
+      });
+    }
+
+    function highlightVictory(coords, token) {
+      const className = token === 1 ? 'victoire-rouge' : 'victoire-jaune';
+      coords.forEach(([row, col]) => {
+        const cell = boardEl.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (cell) {
+          cell.classList.add(className);
+        }
+      });
+    }
+
+    function findVictory(boardState) {
+      const directions = [
+        [0, 1],
+        [1, 0],
+        [1, 1],
+        [1, -1],
+      ];
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const token = boardState[row][col];
+          if (token === 0) continue;
+          for (const [dr, dc] of directions) {
+            const coords = [[row, col]];
+            let r = row + dr;
+            let c = col + dc;
+            while (
+              coords.length < 4 &&
+              r >= 0 && r < ROWS &&
+              c >= 0 && c < COLS &&
+              boardState[r][c] === token
+            ) {
+              coords.push([r, c]);
+              r += dr;
+              c += dc;
+            }
+            if (coords.length >= 4) {
+              return { token, coords };
+            }
+          }
+        }
+      }
+      return { token: null, coords: [] };
+    }
+
+    function animateToken(row, col) {
+      return new Promise(resolve => {
+        const cell = boardEl.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (!cell) {
+          resolve();
+          return;
+        }
+        cell.classList.add('chute');
+        setTimeout(() => {
+          cell.classList.remove('chute');
+          resolve();
+        }, 300);
+      });
     }
 
     function updateStatus(text) {
@@ -271,6 +383,7 @@
       gameFinished = false;
       updateColorBadge();
       updateStatus("En attente d'un adversaire…");
+      clearVictoryHighlights();
       renderBoard();
     });
 
@@ -283,11 +396,31 @@
       gameFinished = false;
       updateColorBadge();
       updateStatus(myTurn ? 'À vous de jouer !' : `Tour de ${opponent}…`);
+      clearVictoryHighlights();
       renderBoard();
     });
 
-    socket.on('move_played', (data) => {
+    socket.on('game_reset', (data) => {
+      myColor = data.color;
+      opponent = data.opponent || null;
+      opponentEl.textContent = opponent ? `Adversaire : ${opponent}` : '';
       syncBoard(data.board || board);
+      myTurn = !!data.your_turn;
+      gameFinished = false;
+      updateColorBadge();
+      if (opponent) {
+        updateStatus(myTurn ? 'À vous de jouer !' : `Tour de ${data.next_turn}…`);
+      } else {
+        updateStatus("En attente d'un adversaire…");
+      }
+      clearVictoryHighlights();
+      renderBoard();
+    });
+
+    socket.on('move_played', async (data) => {
+      clearVictoryHighlights();
+      syncBoard(data.board || board);
+
       if (data.winner) {
         gameFinished = true;
         myTurn = false;
@@ -300,8 +433,19 @@
       } else {
         myTurn = data.next_turn === pseudo;
         updateStatus(myTurn ? 'À vous de jouer !' : `Tour de ${data.next_turn}…`);
+        gameFinished = false;
       }
+
       renderBoard();
+
+      if (Number.isInteger(data.row) && Number.isInteger(data.column)) {
+        await animateToken(data.row, data.column);
+      }
+
+      const victoryInfo = findVictory(board);
+      if (gameFinished && victoryInfo.token) {
+        highlightVictory(victoryInfo.coords, victoryInfo.token);
+      }
     });
 
     socket.on('move_rejected', (data) => {
@@ -325,6 +469,7 @@
       updateStatus(`${name} a quitté la partie.`);
       gameFinished = true;
       myTurn = false;
+      clearVictoryHighlights();
       renderBoard();
     });
 
@@ -335,6 +480,13 @@
 
     leaveBtn.addEventListener('click', () => {
       socket.emit('leave_multiplayer', { room_id: roomId });
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if (gameFinished || !myTurn) {
+        updateStatus('Réinitialisation en cours…');
+      }
+      socket.emit('reset_multiplayer', { room_id: roomId });
     });
 
     window.addEventListener('beforeunload', () => {
