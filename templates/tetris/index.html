@@ -322,7 +322,7 @@
     }
     .duel-stage {
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) minmax(280px, auto) minmax(220px, 1fr);
+      grid-template-columns: minmax(260px, 1fr) minmax(200px, auto) minmax(260px, 1fr);
       gap: 24px;
       align-items: flex-start;
     }
@@ -343,6 +343,7 @@
     .spectator-panel canvas.game-board {
       width: 100%;
       height: auto;
+      max-width: 320px;
     }
     .player-stage {
       display: flex;
@@ -359,18 +360,43 @@
     .hero-board canvas.game-board {
       width: 100%;
       height: auto;
-      max-width: 320px;
+      max-width: 220px;
     }
-    .score-grid {
-      width: 100%;
+    .duel-scoreboard {
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 16px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
     }
-    .opponent-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 12px;
+    .duel-scoreboard .stat-card {
+      align-items: center;
+      text-align: center;
+    }
+    .duel-scoreboard h4 {
+      margin: 0;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(240, 244, 248, 0.7);
+    }
+    .duel-scoreboard .stat-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #f0f4f8;
+    }
+    .duel-scoreboard .stat-sub {
+      font-size: 0.9rem;
+      color: rgba(240, 244, 248, 0.75);
+    }
+    .duel-scoreboard .stat-elo {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      font-size: 0.95rem;
+      color: rgba(240, 244, 248, 0.78);
+      justify-content: center;
     }
     .multi-status {
       font-size: 1rem;
@@ -390,6 +416,9 @@
     }
     .elo-delta.neutral {
       color: rgba(240, 244, 248, 0.75);
+    }
+    .player-sidebar {
+      gap: 20px;
     }
     .player-sidebar .btn {
       width: 100%;
@@ -411,11 +440,14 @@
         width: 100%;
       }
       .spectator-panel canvas.game-board {
-        max-width: 240px;
+        max-width: 260px;
         margin: 0 auto;
       }
       .hero-board canvas.game-board {
-        max-width: 280px;
+        max-width: 200px;
+      }
+      .duel-scoreboard {
+        grid-template-columns: 1fr;
       }
     }
     @media (max-width: 640px) {
@@ -424,10 +456,6 @@
       }
       .tetris-wrapper {
         padding: 20px 18px;
-      }
-      .score-grid,
-      .opponent-grid {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       }
       .lobby-actions,
       .your-room-actions {
@@ -508,38 +536,11 @@
           <div class="duel-stage">
             <aside class="spectator-panel">
               <h3 id="multi-opponent-name">Adversaire</h3>
-              <canvas id="multi-opponent-board" class="game-board" width="160" height="320"></canvas>
-              <div class="opponent-grid">
-                <div class="stat-card">
-                  <h4>Score adverse</h4>
-                  <span class="stat-value" id="multi-opponent-score">0</span>
-                  <span class="stat-sub">Lignes : <span id="multi-opponent-lines">0</span></span>
-                </div>
-                <div class="stat-card">
-                  <h4>Elo adverse</h4>
-                  <span class="stat-value" id="multi-opponent-elo">-</span>
-                  <span class="elo-delta" id="multi-opponent-elo-delta"></span>
-                </div>
-              </div>
+              <canvas id="multi-opponent-board" class="game-board" width="280" height="560"></canvas>
             </aside>
             <div class="player-stage">
               <div class="board-card hero-board">
-                <canvas id="multi-board" class="game-board" width="280" height="560"></canvas>
-              </div>
-              <div class="score-grid">
-                <div class="stat-card">
-                  <h4>Votre score</h4>
-                  <span class="stat-value" id="multi-score">0</span>
-                </div>
-                <div class="stat-card">
-                  <h4>Lignes complétées</h4>
-                  <span class="stat-value" id="multi-lines">0</span>
-                </div>
-                <div class="stat-card">
-                  <h4>Votre Elo</h4>
-                  <span class="stat-value" id="multi-elo">-</span>
-                  <span class="elo-delta" id="multi-elo-delta"></span>
-                </div>
+                <canvas id="multi-board" class="game-board" width="160" height="320"></canvas>
               </div>
               <p id="multi-game-status" class="multi-status"></p>
             </div>
@@ -549,6 +550,28 @@
                 <div id="multi-next" class="next-pieces"></div>
               </div>
               <button id="multi-leave" class="btn danger" disabled>🏳️ Abandonner</button>
+              <div class="duel-scoreboard">
+                <div class="stat-card">
+                  <h4>Score adverse</h4>
+                  <span class="stat-value" id="multi-opponent-score">0</span>
+                  <span class="stat-sub">Lignes : <span id="multi-opponent-lines">0</span></span>
+                  <div class="stat-elo">
+                    <span>Elo :</span>
+                    <span id="multi-opponent-elo">-</span>
+                    <span class="elo-delta" id="multi-opponent-elo-delta"></span>
+                  </div>
+                </div>
+                <div class="stat-card">
+                  <h4>Votre score</h4>
+                  <span class="stat-value" id="multi-score">0</span>
+                  <span class="stat-sub">Lignes : <span id="multi-lines">0</span></span>
+                  <div class="stat-elo">
+                    <span>Elo :</span>
+                    <span id="multi-elo">-</span>
+                    <span class="elo-delta" id="multi-elo-delta"></span>
+                  </div>
+                </div>
+              </div>
             </aside>
           </div>
         </div>
@@ -1555,6 +1578,7 @@
         canvas: multi.boardCanvas,
         previewContainer: multi.nextContainer,
         pieceSource: multiPieceSource,
+        blockSize: 16,
         speedSchedule,
         onBoardChange: sendBoardUpdate,
         onScoreChange: updateMultiScore,
