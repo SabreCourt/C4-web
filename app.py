@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify, render_template, send_from_directory, make_response, redirect, url_for, session
 from subprocess import Popen, PIPE
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -151,6 +152,20 @@ def init_db():
         cursor.execute("PRAGMA user_version = 3")
         conn.commit()
 
+    # Ensure Tetris online Elo column exists (schema version 4)
+    cursor.execute("PRAGMA table_info(user_stats)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "tetris_online_elo" not in columns:
+        cursor.execute(
+            "ALTER TABLE user_stats ADD COLUMN tetris_online_elo INTEGER DEFAULT 1200"
+        )
+        conn.commit()
+        cursor.execute("PRAGMA user_version = 4")
+        conn.commit()
+    elif cursor.execute("PRAGMA user_version").fetchone()[0] < 4:
+        cursor.execute("PRAGMA user_version = 4")
+        conn.commit()
+
     conn.close()
 
 
@@ -161,6 +176,16 @@ init_db()
 # Helper functions
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def _coerce_password_hash(raw):
+    if raw is None:
+        return None
+    if isinstance(raw, bytes):
+        return raw
+    if isinstance(raw, str):
+        return raw.encode("utf-8")
+    return str(raw).encode("utf-8")
 
 
 # --- User statistics helpers ---
@@ -196,7 +221,8 @@ def ensure_user_stats(pseudo: str):
             c4_ai_wins,
             c4_ai_losses,
             c4_online_elo,
-            COALESCE(tetris_high_score, 0)
+            COALESCE(tetris_high_score, 0),
+            COALESCE(tetris_online_elo, 1200)
         FROM user_stats
         WHERE user_id = ?
         """,
@@ -212,6 +238,7 @@ def ensure_user_stats(pseudo: str):
             "c4_ai_losses": 0,
             "c4_online_elo": 1200,
             "tetris_high_score": 0,
+            "tetris_online_elo": 1200,
         }
     return {
         "best_pendu_streak": row[0],
@@ -220,6 +247,7 @@ def ensure_user_stats(pseudo: str):
         "c4_ai_losses": row[3],
         "c4_online_elo": row[4],
         "tetris_high_score": row[5],
+        "tetris_online_elo": row[6] if len(row) > 6 else 1200,
     }
 
 
@@ -246,6 +274,11 @@ def update_user_stats(pseudo: str, **fields):
 def get_user_elo(pseudo: str) -> int:
     stats = ensure_user_stats(pseudo)
     return stats.get("c4_online_elo", 1200) if stats else 1200
+
+
+def get_tetris_elo(pseudo: str) -> int:
+    stats = ensure_user_stats(pseudo)
+    return stats.get("tetris_online_elo", 1200) if stats else 1200
 
 
 def update_pendu_streak(pseudo: str, won: bool):
@@ -283,6 +316,33 @@ def adjust_c4_ai_score(pseudo: str, victory: bool):
 ELO_K_FACTOR = 32
 
 
+def calculate_elo_updates(ratings, *, winner=None, draw=False, k_factor=ELO_K_FACTOR):
+    ratings = ratings or {}
+    players = list(ratings.keys())
+    if len(players) < 2:
+        return {pseudo: {"before": rating, "after": rating, "delta": 0} for pseudo, rating in ratings.items()}
+
+    if draw:
+        scores = {pseudo: 0.5 for pseudo in players}
+    else:
+        scores = {pseudo: (1.0 if pseudo == winner else 0.0) for pseudo in players}
+
+    updates = {}
+    for pseudo in players:
+        opponent = next((p for p in players if p != pseudo), None)
+        if opponent is None:
+            updates[pseudo] = {"before": ratings[pseudo], "after": ratings[pseudo], "delta": 0}
+            continue
+        expected = 1 / (1 + 10 ** ((ratings[opponent] - ratings[pseudo]) / 400))
+        delta = round(k_factor * (scores[pseudo] - expected))
+        updates[pseudo] = {
+            "before": ratings[pseudo],
+            "after": ratings[pseudo] + delta,
+            "delta": delta,
+        }
+    return updates
+
+
 def apply_multiplayer_result(room, *, winner=None, loser=None, draw=False, reason="normal"):
     players = list(room.get("players", {}).keys())
     if len(players) < 2:
@@ -297,22 +357,7 @@ def apply_multiplayer_result(room, *, winner=None, loser=None, draw=False, reaso
             info["elo"] = rating
         ratings_before[pseudo] = rating
 
-    if draw:
-        scores = {pseudo: 0.5 for pseudo in players}
-    else:
-        scores = {pseudo: (1.0 if pseudo == winner else 0.0) for pseudo in players}
-
-    rating_updates = {}
-    for pseudo in players:
-        opponent = [p for p in players if p != pseudo][0]
-        expected = 1 / (1 + 10 ** ((ratings_before[opponent] - ratings_before[pseudo]) / 400))
-        delta = round(ELO_K_FACTOR * (scores[pseudo] - expected))
-        new_rating = ratings_before[pseudo] + delta
-        rating_updates[pseudo] = {
-            "before": ratings_before[pseudo],
-            "after": new_rating,
-            "delta": delta,
-        }
+    rating_updates = calculate_elo_updates(ratings_before, winner=winner, draw=draw)
 
     for pseudo, data in rating_updates.items():
         room["players"][pseudo]["elo"] = data["after"]
@@ -508,8 +553,11 @@ def verify_user(pseudo: str, password: str) -> bool:
     conn.close()
     if not row:
         return False
+    stored_hash = _coerce_password_hash(row["password_hash"])
+    if not stored_hash:
+        return False
     try:
-        return bcrypt.checkpw(password.encode("utf-8"), row["password_hash"].encode("utf-8"))
+        return bcrypt.checkpw(password.encode("utf-8"), stored_hash)
     except ValueError:
         return False
 
@@ -808,6 +856,7 @@ def tetris_highscore():
 def profile():
     pseudo = session["pseudo"]
     stats = ensure_user_stats(pseudo) or {}
+    status = session.pop("profile_status", {})
     return render_template(
         "profile.html",
         pseudo=pseudo,
@@ -817,7 +866,89 @@ def profile():
         c4_ai_losses=stats.get("c4_ai_losses", 0),
         c4_online_elo=stats.get("c4_online_elo", 1200),
         tetris_high_score=stats.get("tetris_high_score", 0),
+        tetris_online_elo=stats.get("tetris_online_elo", 1200),
+        profile_status=status,
     )
+
+
+@app.route("/profile/settings", methods=["POST"])
+@login_required
+def profile_settings():
+    pseudo = session["pseudo"]
+    action = request.form.get("action")
+    status = {"category": "error", "message": "Une erreur est survenue."}
+
+    if action == "change_pseudo":
+        new_pseudo = (request.form.get("new_pseudo") or "").strip()
+        if not new_pseudo:
+            status = {"category": "error", "message": "Merci d'indiquer un nouveau pseudo."}
+        elif len(new_pseudo) < 3:
+            status = {"category": "error", "message": "Le pseudo doit contenir au moins 3 caractères."}
+        elif new_pseudo == pseudo:
+            status = {"category": "success", "message": "Ton pseudo est déjà à jour."}
+        else:
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute("SELECT 1 FROM user WHERE pseudo = ?", (new_pseudo,))
+                if cursor.fetchone():
+                    status = {"category": "error", "message": "Ce pseudo est déjà utilisé."}
+                else:
+                    engaged = False
+                    _, room = find_room_for_player(pseudo)
+                    if room:
+                        engaged = True
+                    with tetris_lock:
+                        if tetris_player_active_room.get(pseudo):
+                            engaged = True
+                        lobby_id, _ = _tetris_find_lobby_for_player(pseudo)
+                        if lobby_id:
+                            engaged = True
+                    if engaged:
+                        status = {"category": "error", "message": "Quitte tes parties en cours avant de changer de pseudo."}
+                    else:
+                        cursor.execute("UPDATE user SET pseudo = ? WHERE pseudo = ?", (new_pseudo, pseudo))
+                        conn.commit()
+                        for sid, name in list(connected_users.items()):
+                            if name == pseudo:
+                                connected_users[sid] = new_pseudo
+                        session["pseudo"] = new_pseudo
+                        pseudo = new_pseudo
+                        status = {"category": "success", "message": "Pseudo mis à jour."}
+            finally:
+                conn.close()
+
+    elif action == "change_password":
+        current_password = (request.form.get("current_password") or "").strip()
+        new_password = (request.form.get("new_password") or "").strip()
+        confirm_password = (request.form.get("confirm_password") or "").strip()
+        if not current_password or not new_password or not confirm_password:
+            status = {"category": "error", "message": "Merci de compléter tous les champs."}
+        elif new_password != confirm_password:
+            status = {"category": "error", "message": "Les nouveaux mots de passe ne correspondent pas."}
+        elif len(new_password) < 8:
+            status = {"category": "error", "message": "Le nouveau mot de passe doit contenir au moins 8 caractères."}
+        else:
+            conn = get_db_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute("SELECT password_hash FROM user WHERE pseudo = ?", (pseudo,))
+                row = cursor.fetchone()
+                stored_hash = _coerce_password_hash(row[0] if row else None)
+                if not stored_hash or not bcrypt.checkpw(current_password.encode("utf-8"), stored_hash):
+                    status = {"category": "error", "message": "L'ancien mot de passe est incorrect."}
+                else:
+                    new_hash = hash_password(new_password)
+                    cursor.execute("UPDATE user SET password_hash = ? WHERE pseudo = ?", (new_hash, pseudo))
+                    conn.commit()
+                    status = {"category": "success", "message": "Mot de passe mis à jour."}
+            finally:
+                conn.close()
+    else:
+        status = {"category": "error", "message": "Action inconnue."}
+
+    session["profile_status"] = status
+    return redirect(url_for("profile"))
 
 
 @app.route("/pendu")
@@ -868,9 +999,14 @@ next_room_id = 1
 
 # --- Gestion du mode Tetris ---
 tetris_lock = threading.Lock()
-tetris_queue = []  # liste de dicts {"sid": ..., "pseudo": ...}
+tetris_queue = []  # legacy queue (unused with lobby mode, kept for cleanup)
 tetris_rooms = {}
 tetris_sid_to_room = {}
+tetris_lobbies = {}
+tetris_player_to_lobby = {}
+tetris_player_active_room = {}
+tetris_lobby_sid_map = {}
+tetris_next_room_id = 1
 TETRIS_PIECES = ["I", "J", "L", "O", "S", "T", "Z"]
 TETRIS_SPEED_SCHEDULE = [
     {"time": 0, "interval": 1000},
@@ -923,6 +1059,33 @@ def _tetris_remove_from_queue(sid):
     return False
 
 
+def _tetris_find_lobby_for_player(pseudo):
+    if not pseudo:
+        return None, None
+    room_id = tetris_player_to_lobby.get(pseudo)
+    if not room_id:
+        return None, None
+    return room_id, tetris_lobbies.get(room_id)
+
+
+def _tetris_remove_player_from_lobby(room_id, pseudo, *, reason="leave"):
+    lobby = tetris_lobbies.get(room_id)
+    if not lobby or pseudo not in lobby.get("players", {}):
+        return False
+    player_info = lobby["players"].pop(pseudo, {})
+    tetris_player_to_lobby.pop(pseudo, None)
+    sid = player_info.get("sid")
+    if sid:
+        tetris_lobby_sid_map.pop(sid, None)
+    if lobby.get("host") == pseudo:
+        lobby["host"] = next(iter(lobby["players"]), None)
+    if lobby["players"]:
+        lobby["status"] = "waiting"
+    else:
+        tetris_lobbies.pop(room_id, None)
+    return True
+
+
 def _tetris_finish_room(room_id, *, winner=None, loser=None, reason="top_out", draw=False):
     room = tetris_rooms.get(room_id)
     if not room:
@@ -933,6 +1096,15 @@ def _tetris_finish_room(room_id, *, winner=None, loser=None, reason="top_out", d
     players = room.get("players", {})
     scores = room.get("scores", {})
     lines = room.get("lines", {})
+    ratings_before = {}
+    for pseudo in players.keys():
+        info = players.setdefault(pseudo, {})
+        rating = info.get("elo")
+        if rating is None:
+            rating = get_tetris_elo(pseudo)
+            info["elo"] = rating
+        ratings_before[pseudo] = rating
+    rating_updates = calculate_elo_updates(ratings_before, winner=winner, draw=draw)
     payload_template = {
         "room_id": room_id,
         "winner": winner,
@@ -945,6 +1117,12 @@ def _tetris_finish_room(room_id, *, winner=None, loser=None, reason="top_out", d
         if not sid:
             continue
         opponent_sid, opponent_name = _tetris_get_opponent(room, pseudo)
+        rating_data = rating_updates.get(pseudo, {"before": info.get("elo"), "after": info.get("elo"), "delta": 0})
+        opponent_rating = None
+        opponent_delta = 0
+        if opponent_name:
+            opponent_rating = rating_updates.get(opponent_name, {}).get("after", players.get(opponent_name, {}).get("elo"))
+            opponent_delta = rating_updates.get(opponent_name, {}).get("delta", 0)
         payload = payload_template.copy()
         payload.update(
             {
@@ -953,21 +1131,29 @@ def _tetris_finish_room(room_id, *, winner=None, loser=None, reason="top_out", d
                 "opponent": opponent_name,
                 "opponent_score": scores.get(opponent_name, 0) if opponent_name else 0,
                 "opponent_lines": lines.get(opponent_name, 0) if opponent_name else 0,
+                "your_elo": rating_data.get("after"),
+                "your_elo_delta": rating_data.get("delta", 0),
+                "opponent_elo": opponent_rating,
+                "opponent_elo_delta": opponent_delta,
             }
         )
         socketio.emit("tetris_match_result", payload, room=sid)
         socketio.emit("tetris_queue_status", {"status": "idle"}, room=sid)
         tetris_sid_to_room.pop(sid, None)
+        tetris_player_active_room.pop(pseudo, None)
+        update_user_stats(pseudo, tetris_online_elo=rating_data.get("after", ratings_before.get(pseudo, 1200)))
     tetris_rooms.pop(room_id, None)
 
 
-def _tetris_start_match(player_a, player_b):
-    room_id = uuid.uuid4().hex[:8]
+def _tetris_start_match(player_a, player_b, room_id=None):
+    room_id = room_id or uuid.uuid4().hex[:8]
+    rating_a = player_a.get("elo") or get_tetris_elo(player_a["pseudo"])
+    rating_b = player_b.get("elo") or get_tetris_elo(player_b["pseudo"])
     room = {
         "id": room_id,
         "players": {
-            player_a["pseudo"]: {"sid": player_a["sid"], "alive": True},
-            player_b["pseudo"]: {"sid": player_b["sid"], "alive": True},
+            player_a["pseudo"]: {"sid": player_a["sid"], "alive": True, "elo": rating_a},
+            player_b["pseudo"]: {"sid": player_b["sid"], "alive": True, "elo": rating_b},
         },
         "bag": [],
         "sequence": [],
@@ -992,6 +1178,8 @@ def _tetris_start_match(player_a, player_b):
     tetris_rooms[room_id] = room
     tetris_sid_to_room[player_a["sid"]] = room_id
     tetris_sid_to_room[player_b["sid"]] = room_id
+    tetris_player_active_room[player_a["pseudo"]] = room_id
+    tetris_player_active_room[player_b["pseudo"]] = room_id
 
     initial_pieces = _tetris_draw_pieces(room, 40)
     for current, opponent in ((player_a, player_b), (player_b, player_a)):
@@ -1003,6 +1191,8 @@ def _tetris_start_match(player_a, player_b):
                 "pieces": list(initial_pieces),
                 "start_in": TETRIS_START_DELAY_MS,
                 "speed_schedule": room["speed_schedule"],
+                "your_elo": current.get("elo", get_tetris_elo(current["pseudo"])),
+                "opponent_elo": opponent.get("elo", get_tetris_elo(opponent["pseudo"])),
             },
             room=current["sid"],
         )
@@ -1015,8 +1205,34 @@ def _tetris_start_match(player_a, player_b):
     room["status"] = "active"
 
 
-def _tetris_cleanup_sid(sid, *, disconnect=False):
+def _tetris_cleanup_sid(sid, *, disconnect=False, pseudo=None):
     with tetris_lock:
+        lobby_room_id = tetris_lobby_sid_map.pop(sid, None)
+        if lobby_room_id:
+            lobby = tetris_lobbies.get(lobby_room_id)
+            if not pseudo and lobby:
+                for name, info in lobby.get("players", {}).items():
+                    if info.get("sid") == sid:
+                        pseudo = name
+                        break
+            if pseudo:
+                _tetris_remove_player_from_lobby(
+                    lobby_room_id,
+                    pseudo,
+                    reason="disconnect" if disconnect else "leave",
+                )
+                lobby = tetris_lobbies.get(lobby_room_id)
+                if lobby:
+                    for info in lobby.get("players", {}).values():
+                        if info.get("sid"):
+                            socketio.emit(
+                                "tetris_queue_status",
+                                {"status": "waiting", "room_id": lobby_room_id},
+                                room=info["sid"],
+                            )
+            if not disconnect:
+                socketio.emit("tetris_queue_status", {"status": "idle"}, room=sid)
+            return
         if _tetris_remove_from_queue(sid):
             if not disconnect:
                 socketio.emit("tetris_queue_status", {"status": "idle"}, room=sid)
@@ -1024,11 +1240,11 @@ def _tetris_cleanup_sid(sid, *, disconnect=False):
         room_id, room = _tetris_room_from_sid(sid)
         if not room_id or not room:
             return
-        pseudo = None
-        for name, info in room.get("players", {}).items():
-            if info.get("sid") == sid:
-                pseudo = name
-                break
+        if not pseudo:
+            for name, info in room.get("players", {}).items():
+                if info.get("sid") == sid:
+                    pseudo = name
+                    break
         if not pseudo:
             return
         opponent_sid, opponent_name = _tetris_get_opponent(room, pseudo)
@@ -1256,6 +1472,117 @@ def join_room_multi(room_id):
 
     return jsonify({"ok": True, "room_id": room_id})
 
+
+
+@app.route("/api/tetris/rooms", methods=["GET"])
+@login_required
+def tetris_list_rooms():
+    pseudo = session["pseudo"]
+    with tetris_lock:
+        rooms = []
+        for room_id, lobby in tetris_lobbies.items():
+            rooms.append(
+                {
+                    "id": room_id,
+                    "host": lobby.get("host"),
+                    "players": list(lobby.get("players", {}).keys()),
+                    "status": lobby.get("status", "waiting"),
+                }
+            )
+        active_room_id = tetris_player_active_room.get(pseudo)
+        current_lobby_id = tetris_player_to_lobby.get(pseudo)
+    return jsonify(
+        {
+            "rooms": rooms,
+            "active_room_id": active_room_id,
+            "lobby_room_id": current_lobby_id,
+        }
+    )
+
+
+@app.route("/api/tetris/rooms", methods=["POST"])
+@login_required
+def tetris_create_room():
+    pseudo = session["pseudo"]
+    with tetris_lock:
+        if tetris_player_active_room.get(pseudo):
+            return (
+                jsonify({"ok": False, "error": "already_in_match", "room_id": tetris_player_active_room[pseudo]}),
+                400,
+            )
+        current_room_id, _ = _tetris_find_lobby_for_player(pseudo)
+        if current_room_id:
+            return jsonify({"ok": False, "error": "already_in_room", "room_id": current_room_id}), 400
+        global tetris_next_room_id
+        room_id = f"tetris-{tetris_next_room_id}"
+        tetris_next_room_id += 1
+        tetris_lobbies[room_id] = {
+            "id": room_id,
+            "host": pseudo,
+            "players": {
+                pseudo: {"sid": None, "elo": get_tetris_elo(pseudo)},
+            },
+            "status": "waiting",
+            "created": time.time(),
+        }
+        tetris_player_to_lobby[pseudo] = room_id
+    return jsonify({"ok": True, "room_id": room_id})
+
+
+@app.route("/api/tetris/rooms/<room_id>/join", methods=["POST"])
+@login_required
+def tetris_join_room_http(room_id):
+    pseudo = session["pseudo"]
+    with tetris_lock:
+        if tetris_player_active_room.get(pseudo):
+            return (
+                jsonify({"ok": False, "error": "already_in_match", "room_id": tetris_player_active_room[pseudo]}),
+                400,
+            )
+        current_room_id, _ = _tetris_find_lobby_for_player(pseudo)
+        if current_room_id:
+            if current_room_id == room_id:
+                return jsonify({"ok": True, "room_id": room_id})
+            return jsonify({"ok": False, "error": "already_in_room", "room_id": current_room_id}), 400
+        lobby = tetris_lobbies.get(room_id)
+        if not lobby:
+            return jsonify({"ok": False, "error": "room_not_found"}), 404
+        if lobby.get("status") not in ("waiting", "ready"):
+            return jsonify({"ok": False, "error": "room_unavailable"}), 400
+        if len(lobby.get("players", {})) >= 2:
+            return jsonify({"ok": False, "error": "room_full"}), 400
+        lobby.setdefault("players", {})[pseudo] = {"sid": None, "elo": get_tetris_elo(pseudo)}
+        lobby["status"] = "ready" if len(lobby["players"]) >= 2 else "waiting"
+        if lobby.get("host") is None:
+            lobby["host"] = pseudo
+        tetris_player_to_lobby[pseudo] = room_id
+    return jsonify({"ok": True, "room_id": room_id})
+
+
+@app.route("/api/tetris/rooms/<room_id>/leave", methods=["POST"])
+@login_required
+def tetris_leave_room_http(room_id):
+    pseudo = session["pseudo"]
+    with tetris_lock:
+        lobby = tetris_lobbies.get(room_id)
+        if not lobby or pseudo not in lobby.get("players", {}):
+            return jsonify({"ok": False, "error": "room_not_found"}), 404
+        sid = lobby["players"][pseudo].get("sid")
+        _tetris_remove_player_from_lobby(room_id, pseudo, reason="leave")
+        if sid:
+            socketio.emit("tetris_queue_status", {"status": "idle"}, room=sid)
+        lobby = tetris_lobbies.get(room_id)
+        if lobby:
+            lobby["status"] = "waiting"
+            for info in lobby.get("players", {}).values():
+                other_sid = info.get("sid")
+                if other_sid:
+                    socketio.emit(
+                        "tetris_queue_status",
+                        {"status": "waiting", "room_id": room_id},
+                        room=other_sid,
+                    )
+    return jsonify({"ok": True})
 
 
 @app.route('/set_pseudo', methods=['POST'])
@@ -1504,7 +1831,7 @@ def handle_disconnect():
     sid = request.sid
     pseudo = connected_users.pop(sid, "inconnu")
     print(f"{pseudo} déconnecté (sid={sid})")
-    _tetris_cleanup_sid(sid, disconnect=True)
+    _tetris_cleanup_sid(sid, disconnect=True, pseudo=pseudo)
 
     room_id = player_rooms.get(sid)
     if room_id:
@@ -1874,10 +2201,88 @@ def tetris_cancel_matchmaking():
         emit('tetris_queue_status', {'status': 'idle'})
 
 
+@socketio.on('tetris_join_room')
+def tetris_join_room(data):
+    sid = request.sid
+    pseudo = connected_users.get(sid)
+    if not pseudo:
+        emit('tetris_error', {'message': 'unknown_player'})
+        return
+    room_id = None
+    if isinstance(data, dict):
+        room_id = data.get('room_id')
+    if not room_id:
+        emit('tetris_error', {'message': 'invalid_room'})
+        return
+    with tetris_lock:
+        lobby = tetris_lobbies.get(room_id)
+        if not lobby:
+            room = tetris_rooms.get(room_id)
+            if room and pseudo in room.get('players', {}):
+                info = room['players'][pseudo]
+                info['sid'] = sid
+                tetris_sid_to_room[sid] = room_id
+                tetris_player_active_room[pseudo] = room_id
+                emit('tetris_queue_status', {'status': 'matched', 'room_id': room_id}, room=sid)
+            else:
+                emit('tetris_error', {'message': 'room_not_found'})
+            return
+        if pseudo not in lobby.get('players', {}):
+            emit('tetris_error', {'message': 'not_in_room'})
+            return
+        lobby_info = lobby['players'][pseudo]
+        lobby_info['sid'] = sid
+        lobby_info['elo'] = get_tetris_elo(pseudo)
+        tetris_lobby_sid_map[sid] = room_id
+        lobby['status'] = 'ready' if len(lobby['players']) >= 2 else 'waiting'
+        opponent_name = next((name for name in lobby['players'] if name != pseudo), None)
+        ready_players = []
+        for name, info in lobby['players'].items():
+            if not info.get('sid'):
+                ready_players = None
+                break
+            ready_players.append({
+                'pseudo': name,
+                'sid': info.get('sid'),
+                'elo': info.get('elo') or get_tetris_elo(name),
+            })
+        if ready_players and len(ready_players) == 2:
+            tetris_lobbies.pop(room_id, None)
+            for name, info in lobby['players'].items():
+                tetris_player_to_lobby.pop(name, None)
+                sid_existing = info.get('sid')
+                if sid_existing:
+                    tetris_lobby_sid_map.pop(sid_existing, None)
+            _tetris_start_match(ready_players[0], ready_players[1], room_id=room_id)
+        else:
+            emit(
+                'tetris_queue_status',
+                {
+                    'status': lobby.get('status', 'waiting'),
+                    'room_id': room_id,
+                    'opponent': opponent_name,
+                },
+                room=sid,
+            )
+            for name, info in lobby['players'].items():
+                other_sid = info.get('sid')
+                if other_sid and other_sid != sid:
+                    socketio.emit(
+                        'tetris_queue_status',
+                        {
+                            'status': lobby.get('status', 'waiting'),
+                            'room_id': room_id,
+                            'opponent': pseudo,
+                        },
+                        room=other_sid,
+                    )
+
+
 @socketio.on('tetris_leave_match')
 def tetris_leave_match():
     sid = request.sid
-    _tetris_cleanup_sid(sid)
+    pseudo = connected_users.get(sid)
+    _tetris_cleanup_sid(sid, pseudo=pseudo)
     emit('tetris_left', {'ok': True})
 
 
@@ -2006,4 +2411,3 @@ def handle_demande_video(data):
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000, debug=True)
-
