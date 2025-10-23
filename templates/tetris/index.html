@@ -59,6 +59,15 @@
       color: rgba(240, 244, 248, 0.72);
       font-size: 0.95rem;
     }
+    .mode-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
     .mode-switch {
       display: inline-flex;
       background: rgba(255, 255, 255, 0.08);
@@ -255,8 +264,23 @@
     }
     .status-message {
       margin: 0;
-      font-size: 0.95rem;
-      color: rgba(240, 244, 248, 0.82);
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #0b1220;
+      background: linear-gradient(135deg, rgba(148, 163, 184, 0.85), rgba(203, 213, 225, 0.85));
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.65);
+    }
+
+    .status-message:empty {
+      display: none;
+    }
+
+    .mode-bar .status-message {
+      flex: 1 1 260px;
+      text-align: center;
     }
     .multi-lobby,
     .multi-game {
@@ -494,9 +518,12 @@
       <a href="{{ url_for('menu') }}" class="back-btn">⬅️ Retour au menu</a>
     </header>
 
-    <div class="mode-switch">
-      <button type="button" class="active" data-mode="solo">🎯 Solo classique</button>
-      <button type="button" data-mode="multi">⚔️ Duel 1v1</button>
+    <div class="mode-bar">
+      <div class="mode-switch">
+        <button type="button" class="active" data-mode="solo">🎯 Solo classique</button>
+        <button type="button" data-mode="multi">⚔️ Duel 1v1</button>
+      </div>
+      <p id="solo-status" class="status-message" aria-live="polite"></p>
     </div>
 
     <section id="mode-solo" class="mode-panel active">
@@ -523,7 +550,6 @@
             <div id="solo-next" class="next-pieces"></div>
           </div>
           <button id="solo-start" class="btn">▶️ Lancer une partie</button>
-          <p id="solo-status" class="status-message"></p>
         </div>
       </div>
       <div class="controls">
