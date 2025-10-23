@@ -172,9 +172,9 @@
     }
 
     .reset-gradient {
-      background: linear-gradient(90deg, #ff5f6d, #ffc371);
-      color: #1b1b1b;
-      box-shadow: 0 14px 24px rgba(255, 95, 109, 0.25);
+      background: linear-gradient(135deg, #9ca3af, #4b5563);
+      color: #0f172a;
+      box-shadow: 0 14px 24px rgba(15, 23, 42, 0.35);
       border: none;
       border-radius: 10px;
       font-weight: 600;
@@ -185,12 +185,12 @@
 
     .reset-gradient:hover {
       transform: translateY(-2px);
-      box-shadow: 0 18px 28px rgba(255, 95, 109, 0.35);
+      box-shadow: 0 18px 28px rgba(15, 23, 42, 0.45);
       opacity: 0.95;
     }
 
     .reset-gradient:focus-visible {
-      outline: 3px solid rgba(255, 95, 109, 0.45);
+      outline: 3px solid rgba(148, 163, 184, 0.6);
       outline-offset: 2px;
     }
 
@@ -282,15 +282,17 @@
 
     .message {
       margin-top: 18px;
-      padding: 16px 20px;
+      padding: 18px 22px;
       border-radius: 18px;
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: 0.02em;
       text-align: center;
-      background: rgba(148, 163, 184, 0.12);
-      border: 1px solid transparent;
+      background: rgba(148, 163, 184, 0.18);
+      border: 2px solid transparent;
+      box-shadow: 0 16px 34px rgba(15, 23, 42, 0.35);
       opacity: 0;
       transform: translateY(-6px);
-      transition: opacity 0.25s ease, transform 0.25s ease, border 0.25s ease;
+      transition: opacity 0.25s ease, transform 0.25s ease, border 0.25s ease, box-shadow 0.25s ease;
     }
 
     .message.visible {
@@ -299,22 +301,41 @@
     }
 
     .message--success {
-      background: linear-gradient(135deg, rgba(74, 222, 128, 0.18), rgba(22, 163, 74, 0.12));
-      border-color: rgba(74, 222, 128, 0.45);
+      background: linear-gradient(135deg, rgba(74, 222, 128, 0.25), rgba(22, 163, 74, 0.18));
+      border-color: rgba(74, 222, 128, 0.6);
       color: #bbf7d0;
-      box-shadow: 0 12px 26px rgba(34, 197, 94, 0.18);
+      box-shadow: 0 18px 36px rgba(34, 197, 94, 0.28);
     }
 
     .message--danger {
-      background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(239, 68, 68, 0.12));
-      border-color: rgba(248, 113, 113, 0.45);
+      background: linear-gradient(135deg, rgba(248, 113, 113, 0.28), rgba(239, 68, 68, 0.2));
+      border-color: rgba(248, 113, 113, 0.6);
       color: #fecaca;
-      box-shadow: 0 12px 26px rgba(239, 68, 68, 0.18);
+      box-shadow: 0 18px 36px rgba(239, 68, 68, 0.28);
     }
 
     .message--info {
-      border-color: rgba(148, 163, 184, 0.35);
+      border-color: rgba(148, 163, 184, 0.55);
       color: #e2e8f0;
+    }
+
+    .status-banner {
+      margin: 0;
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.02em;
+      text-align: center;
+      background: rgba(59, 130, 246, 0.14);
+      color: #bae6fd;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      display: none;
+    }
+
+    .status-banner.visible {
+      display: block;
     }
 
     .footer-links {
@@ -375,7 +396,8 @@
             <button type="submit" class="validate-gradient">Valider</button>
           </div>
         </form>
-        <p class="message" id="pendu-message"></p>
+        <p class="message" id="pendu-message" aria-live="polite"></p>
+        <p id="pendu-status" class="status-banner" aria-live="assertive"></p>
         <button class="new-game reset-gradient" id="new-game" hidden>Nouvelle partie</button>
       </div>
 
@@ -414,7 +436,10 @@
     function updateMessage(content, status) {
       messageElement.textContent = content || '';
       messageElement.className = 'message';
-      if (!content) return;
+      if (!content) {
+        messageElement.classList.remove('visible');
+        return;
+      }
 
       messageElement.classList.add('visible');
       if (status === 'won') {
@@ -468,7 +493,15 @@
       }
 
       updateMessage(message, state.status);
-      statusElement.textContent = state.status === 'won' ? '🎉 Victoire' : state.status === 'lost' ? '💥 Défaite' : '';
+      if (statusElement) {
+        const statusText = state.status === 'won'
+          ? '🎉 Victoire'
+          : state.status === 'lost'
+            ? '💥 Défaite'
+            : '';
+        statusElement.textContent = statusText;
+        statusElement.classList.toggle('visible', Boolean(statusText));
+      }
       newGameButton.hidden = state.status !== 'won' && state.status !== 'lost';
     }
 
