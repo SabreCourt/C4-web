@@ -19,7 +19,7 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      padding: 32px 16px;
+      padding: 28px 16px;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: radial-gradient(circle at 25% 25%, #1b2735, #090a0f 75%);
       color: #f0f4f8;
@@ -322,9 +322,9 @@
     }
     .duel-stage {
       display: grid;
-      grid-template-columns: minmax(260px, 1fr) minmax(200px, auto) minmax(260px, 1fr);
-      gap: 24px;
-      align-items: flex-start;
+      grid-template-columns: minmax(160px, 0.6fr) minmax(340px, 1.5fr) minmax(220px, 0.9fr);
+      gap: 20px;
+      align-items: start;
     }
     .spectator-panel,
     .player-sidebar {
@@ -343,13 +343,13 @@
     .spectator-panel canvas.game-board {
       width: 100%;
       height: auto;
-      max-width: 320px;
+      max-width: 160px;
     }
     .player-stage {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 18px;
+      gap: 14px;
       width: 100%;
     }
     .hero-board {
@@ -360,15 +360,15 @@
     .hero-board canvas.game-board {
       width: 100%;
       height: auto;
-      max-width: 220px;
+      max-width: clamp(300px, 32vw, 360px);
     }
     .duel-scoreboard {
       background: rgba(255, 255, 255, 0.06);
       border-radius: 14px;
-      padding: 16px;
+      padding: 14px 16px;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
+      gap: 12px;
     }
     .duel-scoreboard .stat-card {
       align-items: center;
@@ -382,7 +382,7 @@
       color: rgba(240, 244, 248, 0.7);
     }
     .duel-scoreboard .stat-value {
-      font-size: 1.6rem;
+      font-size: 1.45rem;
       font-weight: 700;
       color: #f0f4f8;
     }
@@ -440,11 +440,11 @@
         width: 100%;
       }
       .spectator-panel canvas.game-board {
-        max-width: 260px;
+        max-width: 150px;
         margin: 0 auto;
       }
       .hero-board canvas.game-board {
-        max-width: 200px;
+        max-width: 240px;
       }
       .duel-scoreboard {
         grid-template-columns: 1fr;
@@ -536,11 +536,11 @@
           <div class="duel-stage">
             <aside class="spectator-panel">
               <h3 id="multi-opponent-name">Adversaire</h3>
-              <canvas id="multi-opponent-board" class="game-board" width="280" height="560"></canvas>
+              <canvas id="multi-opponent-board" class="game-board" width="160" height="320"></canvas>
             </aside>
             <div class="player-stage">
               <div class="board-card hero-board">
-                <canvas id="multi-board" class="game-board" width="160" height="320"></canvas>
+                <canvas id="multi-board" class="game-board" width="240" height="480"></canvas>
               </div>
               <p id="multi-game-status" class="multi-status"></p>
             </div>
@@ -1578,7 +1578,7 @@
         canvas: multi.boardCanvas,
         previewContainer: multi.nextContainer,
         pieceSource: multiPieceSource,
-        blockSize: 16,
+        blockSize: 24,
         speedSchedule,
         onBoardChange: sendBoardUpdate,
         onScoreChange: updateMultiScore,
