@@ -137,6 +137,13 @@
       letter-spacing: 0.08em;
       color: rgba(240, 244, 248, 0.7);
     }
+    .stat-card h4 {
+      margin: 0;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(240, 244, 248, 0.7);
+    }
     .stat-card .stat-value {
       font-size: 1.6rem;
       font-weight: 700;
@@ -233,42 +240,160 @@
     }
     .multi-lobby,
     .multi-game {
-      flex: 1 1 100%;
+      width: 100%;
+    }
+    .lobby-card {
+      background: rgba(0, 0, 0, 0.32);
+      border-radius: 18px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
+      box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.45);
     }
-    .multi-buttons {
+    .lobby-card h3 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+    .lobby-card .subtitle {
+      margin: 0;
+      color: rgba(240, 244, 248, 0.75);
+      font-size: 0.95rem;
+    }
+    .lobby-actions {
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
     }
-    .multi-boards {
+    .lobby-message {
+      min-height: 24px;
+      font-size: 0.95rem;
+      color: rgba(240, 244, 248, 0.8);
+    }
+    .room-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .room-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.06);
+      gap: 16px;
+    }
+    .room-item strong {
+      font-size: 1rem;
+    }
+    .room-meta {
+      color: rgba(240, 244, 248, 0.7);
+      font-size: 0.85rem;
+    }
+    .room-empty {
+      text-align: center;
+      color: rgba(240, 244, 248, 0.6);
+      padding: 18px 0;
+      font-size: 0.95rem;
+    }
+    .your-room {
+      background: rgba(30, 144, 255, 0.12);
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .your-room-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin: 0;
+    }
+    .your-room-status {
+      margin: 0;
+      color: rgba(240, 244, 248, 0.78);
+      font-size: 0.95rem;
+    }
+    .your-room-actions {
       display: flex;
       flex-wrap: wrap;
+      gap: 10px;
+    }
+    .duel-stage {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(280px, auto) minmax(220px, 1fr);
       gap: 24px;
-      justify-content: flex-start;
       align-items: flex-start;
     }
-    .board-wrapper {
+    .spectator-panel,
+    .player-sidebar {
+      background: rgba(0, 0, 0, 0.32);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.45);
       display: flex;
       flex-direction: column;
-      gap: 12px;
-    }
-    .board-wrapper h3 {
-      margin: 0;
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
-    .multi-stats {
-      display: flex;
       gap: 16px;
-      font-size: 0.95rem;
-      color: rgba(240, 244, 248, 0.82);
+    }
+    .spectator-panel h3 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+    .spectator-panel canvas.game-board {
+      width: 100%;
+      height: auto;
+    }
+    .player-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      width: 100%;
+    }
+    .hero-board {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+    .hero-board canvas.game-board {
+      width: 100%;
+      height: auto;
+      max-width: 320px;
+    }
+    .score-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+    }
+    .opponent-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
     }
     .multi-status {
       font-size: 1rem;
       min-height: 24px;
+      text-align: center;
+      color: rgba(240, 244, 248, 0.85);
+    }
+    .elo-delta {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .elo-delta.positive {
+      color: #4ade80;
+    }
+    .elo-delta.negative {
+      color: #f87171;
+    }
+    .elo-delta.neutral {
+      color: rgba(240, 244, 248, 0.75);
+    }
+    .player-sidebar .btn {
+      width: 100%;
+      justify-content: center;
     }
     .hidden {
       display: none !important;
@@ -278,12 +403,19 @@
       .multi-layout {
         flex-direction: column;
       }
-      .board-card {
+      .duel-stage {
+        grid-template-columns: 1fr;
+      }
+      .spectator-panel,
+      .player-sidebar {
         width: 100%;
       }
-      .board-card canvas.game-board {
-        width: 100%;
-        height: auto;
+      .spectator-panel canvas.game-board {
+        max-width: 240px;
+        margin: 0 auto;
+      }
+      .hero-board canvas.game-board {
+        max-width: 280px;
       }
     }
     @media (max-width: 640px) {
@@ -293,9 +425,13 @@
       .tetris-wrapper {
         padding: 20px 18px;
       }
-      .multi-stats {
+      .score-grid,
+      .opponent-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      }
+      .lobby-actions,
+      .your-room-actions {
         flex-direction: column;
-        gap: 6px;
       }
     }
   </style>
@@ -350,38 +486,70 @@
     <section id="mode-multi" class="mode-panel">
       <div class="multi-layout">
         <div id="multi-lobby" class="multi-lobby">
-          <p id="multi-status" class="status-message">Lance une recherche pour affronter un adversaire en duel.</p>
-          <div class="multi-buttons">
-            <button id="multi-search" class="btn">🔍 Lancer la recherche</button>
-            <button id="multi-cancel" class="btn secondary" disabled>⏹️ Annuler</button>
+          <div class="lobby-card">
+            <h3>Lobby en ligne</h3>
+            <p class="subtitle">Rejoins une salle disponible ou crée ton propre duel.</p>
+            <div class="lobby-actions">
+              <button id="multi-create" class="btn">➕ Créer une salle</button>
+              <button id="multi-refresh" class="btn secondary">🔄 Actualiser</button>
+            </div>
+            <div id="multi-lobby-message" class="lobby-message"></div>
+            <div id="multi-your-room" class="your-room hidden">
+              <p class="your-room-title" id="multi-your-room-title">Ta salle</p>
+              <p class="your-room-status" id="multi-your-room-status"></p>
+              <div class="your-room-actions">
+                <button id="multi-leave-room" class="btn secondary">Quitter la salle</button>
+              </div>
+            </div>
+            <div id="multi-rooms" class="room-list"></div>
           </div>
         </div>
         <div id="multi-game" class="multi-game hidden">
-          <div class="multi-boards">
-            <div class="board-wrapper">
-              <h3>Vous</h3>
-              <canvas id="multi-board" class="game-board" width="280" height="560"></canvas>
-              <div class="multi-stats">
-                <span>Score : <strong id="multi-score">0</strong></span>
-                <span>Lignes : <strong id="multi-lines">0</strong></span>
+          <div class="duel-stage">
+            <aside class="spectator-panel">
+              <h3 id="multi-opponent-name">Adversaire</h3>
+              <canvas id="multi-opponent-board" class="game-board" width="160" height="320"></canvas>
+              <div class="opponent-grid">
+                <div class="stat-card">
+                  <h4>Score adverse</h4>
+                  <span class="stat-value" id="multi-opponent-score">0</span>
+                  <span class="stat-sub">Lignes : <span id="multi-opponent-lines">0</span></span>
+                </div>
+                <div class="stat-card">
+                  <h4>Elo adverse</h4>
+                  <span class="stat-value" id="multi-opponent-elo">-</span>
+                  <span class="elo-delta" id="multi-opponent-elo-delta"></span>
+                </div>
               </div>
+            </aside>
+            <div class="player-stage">
+              <div class="board-card hero-board">
+                <canvas id="multi-board" class="game-board" width="280" height="560"></canvas>
+              </div>
+              <div class="score-grid">
+                <div class="stat-card">
+                  <h4>Votre score</h4>
+                  <span class="stat-value" id="multi-score">0</span>
+                </div>
+                <div class="stat-card">
+                  <h4>Lignes complétées</h4>
+                  <span class="stat-value" id="multi-lines">0</span>
+                </div>
+                <div class="stat-card">
+                  <h4>Votre Elo</h4>
+                  <span class="stat-value" id="multi-elo">-</span>
+                  <span class="elo-delta" id="multi-elo-delta"></span>
+                </div>
+              </div>
+              <p id="multi-game-status" class="multi-status"></p>
+            </div>
+            <aside class="player-sidebar">
               <div class="next-wrapper">
                 <h4>Vos prochaines pièces</h4>
                 <div id="multi-next" class="next-pieces"></div>
               </div>
-            </div>
-            <div class="board-wrapper">
-              <h3 id="multi-opponent-name">Adversaire</h3>
-              <canvas id="multi-opponent-board" class="game-board" width="160" height="320"></canvas>
-              <div class="multi-stats">
-                <span>Score : <strong id="multi-opponent-score">0</strong></span>
-                <span>Lignes : <strong id="multi-opponent-lines">0</strong></span>
-              </div>
-            </div>
-          </div>
-          <p id="multi-game-status" class="multi-status"></p>
-          <div class="multi-buttons">
-            <button id="multi-leave" class="btn danger" disabled>🏳️ Abandonner</button>
+              <button id="multi-leave" class="btn danger" disabled>🏳️ Abandonner</button>
+            </aside>
           </div>
         </div>
       </div>
@@ -856,9 +1024,11 @@
         if (btn.dataset.mode === 'solo') {
           soloPanel.classList.add('active');
           multiPanel.classList.remove('active');
+          stopLobbyPolling();
         } else {
           multiPanel.classList.add('active');
           soloPanel.classList.remove('active');
+          startLobbyPolling(true);
         }
       });
     });
@@ -973,9 +1143,14 @@
     const multi = {
       lobby: document.getElementById('multi-lobby'),
       game: document.getElementById('multi-game'),
-      statusEl: document.getElementById('multi-status'),
-      searchBtn: document.getElementById('multi-search'),
-      cancelBtn: document.getElementById('multi-cancel'),
+      createBtn: document.getElementById('multi-create'),
+      refreshBtn: document.getElementById('multi-refresh'),
+      lobbyMessageEl: document.getElementById('multi-lobby-message'),
+      roomsEl: document.getElementById('multi-rooms'),
+      yourRoomEl: document.getElementById('multi-your-room'),
+      yourRoomTitleEl: document.getElementById('multi-your-room-title'),
+      yourRoomStatusEl: document.getElementById('multi-your-room-status'),
+      leaveRoomBtn: document.getElementById('multi-leave-room'),
       leaveBtn: document.getElementById('multi-leave'),
       boardCanvas: document.getElementById('multi-board'),
       opponentCanvas: document.getElementById('multi-opponent-board'),
@@ -986,8 +1161,11 @@
       opponentLinesEl: document.getElementById('multi-opponent-lines'),
       opponentNameEl: document.getElementById('multi-opponent-name'),
       gameStatusEl: document.getElementById('multi-game-status'),
+      eloEl: document.getElementById('multi-elo'),
+      eloDeltaEl: document.getElementById('multi-elo-delta'),
+      opponentEloEl: document.getElementById('multi-opponent-elo'),
+      opponentEloDeltaEl: document.getElementById('multi-opponent-elo-delta'),
       inMatch: false,
-      searching: false,
       roomId: null,
       opponent: null,
       pieceQueue: [],
@@ -995,17 +1173,260 @@
       gameInstance: null,
       startTimeout: null,
       countdownInterval: null,
-      reportedGameOver: false
+      reportedGameOver: false,
+      currentLobbyRoomId: null,
+      joinedRoomId: null,
+      lobbyPolling: null,
     };
 
-    function updateQueueButtons(searching) {
-      multi.searching = searching;
-      if (multi.inMatch) {
-        multi.searchBtn.disabled = true;
-        multi.cancelBtn.disabled = true;
+    function setEloDisplay(valueEl, deltaEl, rating, delta) {
+      if (valueEl) {
+        if (typeof rating === 'number' && !Number.isNaN(rating)) {
+          valueEl.textContent = Math.round(rating);
+        } else if (rating) {
+          valueEl.textContent = rating;
+        } else {
+          valueEl.textContent = '-';
+        }
+      }
+      if (deltaEl) {
+        deltaEl.textContent = '';
+        deltaEl.classList.remove('positive', 'negative', 'neutral');
+        if (typeof delta === 'number' && !Number.isNaN(delta)) {
+          if (delta > 0) {
+            deltaEl.textContent = `+${delta}`;
+            deltaEl.classList.add('positive');
+          } else if (delta < 0) {
+            deltaEl.textContent = `${delta}`;
+            deltaEl.classList.add('negative');
+          } else {
+            deltaEl.textContent = '0';
+            deltaEl.classList.add('neutral');
+          }
+        }
+      }
+    }
+
+    function setYourRoomStatus(text) {
+      if (multi.yourRoomStatusEl) {
+        multi.yourRoomStatusEl.textContent = text || '';
+      }
+    }
+
+    function startLobbyPolling(initial = false) {
+      if (multi.lobbyPolling) return;
+      if (initial && multi.lobbyMessageEl && !multi.lobbyMessageEl.textContent) {
+        multi.lobbyMessageEl.textContent = 'Rejoins une salle pour lancer un duel.';
+      }
+      fetchTetrisRooms();
+      multi.lobbyPolling = setInterval(fetchTetrisRooms, 5000);
+    }
+
+    function stopLobbyPolling() {
+      if (!multi.lobbyPolling) return;
+      clearInterval(multi.lobbyPolling);
+      multi.lobbyPolling = null;
+    }
+
+    async function fetchTetrisRooms(manual = false) {
+      try {
+        const response = await fetch('/api/tetris/rooms');
+        if (!response.ok) {
+          throw new Error('Impossible de récupérer les salles disponibles.');
+        }
+        const data = await response.json();
+        handleLobbyData(data || {});
+        if (manual && multi.lobbyMessageEl) {
+          multi.lobbyMessageEl.textContent = 'Liste mise à jour.';
+        }
+      } catch (error) {
+        if (multi.lobbyMessageEl) {
+          multi.lobbyMessageEl.textContent = error.message || 'Erreur lors de la récupération des salles.';
+        }
+      }
+    }
+
+    function handleLobbyData(data) {
+      if (!multi.lobby || multi.inMatch) {
+        return;
+      }
+      const rooms = Array.isArray(data.rooms) ? data.rooms : [];
+      const lobbyRoomId = data.lobby_room_id || null;
+      const activeRoomId = data.active_room_id || null;
+
+      if (activeRoomId && !multi.inMatch) {
+        joinLobbyRoom(activeRoomId);
+      }
+
+      if (lobbyRoomId) {
+        multi.currentLobbyRoomId = lobbyRoomId;
+        const lobby = rooms.find(room => room.id === lobbyRoomId) || {
+          id: lobbyRoomId,
+          host: pseudo,
+          players: [pseudo],
+          status: 'waiting'
+        };
+        updateYourRoom(lobby);
       } else {
-        multi.searchBtn.disabled = searching;
-        multi.cancelBtn.disabled = !searching;
+        multi.currentLobbyRoomId = null;
+        if (multi.yourRoomEl) {
+          multi.yourRoomEl.classList.add('hidden');
+        }
+      }
+
+      const availableRooms = rooms.filter(room => room.status === 'waiting' && Array.isArray(room.players) && room.players.length === 1 && room.host !== pseudo);
+      renderRoomList(availableRooms);
+
+      if (!multi.currentLobbyRoomId && multi.lobbyMessageEl && !multi.lobbyMessageEl.textContent) {
+        multi.lobbyMessageEl.textContent = availableRooms.length ? 'Choisis une salle pour jouer.' : 'Crée une salle pour lancer un duel.';
+      }
+    }
+
+    function updateYourRoom(lobby) {
+      if (!multi.yourRoomEl) return;
+      multi.yourRoomEl.classList.remove('hidden');
+      const players = Array.isArray(lobby.players) ? lobby.players : [];
+      const opponent = players.find(name => name !== pseudo);
+      const isHost = lobby.host === pseudo;
+      if (multi.yourRoomTitleEl) {
+        multi.yourRoomTitleEl.textContent = isHost ? 'Tu es l'hôte de la salle' : `Salle de ${lobby.host || 'votre adversaire'}`;
+      }
+      if (opponent) {
+        setYourRoomStatus(lobby.status === 'ready' ? `Adversaire trouvé : ${opponent}. Préparation en cours…` : `En attente que ${opponent} rejoigne la partie…`);
+      } else {
+        setYourRoomStatus('En attente d'un adversaire…');
+      }
+      if (multi.leaveRoomBtn) {
+        multi.leaveRoomBtn.disabled = false;
+      }
+    }
+
+    function renderRoomList(list) {
+      if (!multi.roomsEl) return;
+      multi.roomsEl.innerHTML = '';
+      if (!list.length) {
+        multi.roomsEl.innerHTML = '<div class="room-empty">Aucune salle disponible pour le moment.</div>';
+        return;
+      }
+      list.forEach(room => {
+        const item = document.createElement('div');
+        item.className = 'room-item';
+        const details = document.createElement('div');
+        details.innerHTML = `<strong>${room.host}</strong><div class="room-meta">1/2 joueurs</div>`;
+        const joinButton = document.createElement('button');
+        joinButton.className = 'btn secondary';
+        joinButton.textContent = 'Rejoindre';
+        joinButton.addEventListener('click', () => joinLobbyRoomRequest(room.id));
+        item.appendChild(details);
+        item.appendChild(joinButton);
+        multi.roomsEl.appendChild(item);
+      });
+    }
+
+    function joinLobbyRoom(roomId) {
+      if (!roomId) return;
+      multi.currentLobbyRoomId = roomId;
+      if (multi.joinedRoomId !== roomId) {
+        socket.emit('tetris_join_room', { room_id: roomId });
+        multi.joinedRoomId = roomId;
+      }
+    }
+
+    async function joinLobbyRoomRequest(roomId) {
+      if (!roomId) return;
+      if (multi.lobbyMessageEl) {
+        multi.lobbyMessageEl.textContent = 'Connexion à la salle…';
+      }
+      try {
+        const response = await fetch(`/api/tetris/rooms/${roomId}/join`, { method: 'POST' });
+        const payload = await response.json();
+        if (!response.ok) {
+          if (payload && payload.error === 'already_in_room' && payload.room_id) {
+            joinLobbyRoom(payload.room_id);
+            if (multi.lobbyMessageEl) {
+              multi.lobbyMessageEl.textContent = 'Tu es déjà dans cette salle.';
+            }
+            return;
+          }
+          throw new Error('Impossible de rejoindre la salle.');
+        }
+        if (multi.lobbyMessageEl) {
+          multi.lobbyMessageEl.textContent = 'Salle rejointe. Préparation…';
+        }
+        joinLobbyRoom(payload.room_id);
+        fetchTetrisRooms();
+      } catch (error) {
+        if (multi.lobbyMessageEl) {
+          multi.lobbyMessageEl.textContent = error.message || 'Erreur lors de la tentative de rejoindre la salle.';
+        }
+      }
+    }
+
+    async function createLobbyRoom() {
+      if (!multi.createBtn) return;
+      multi.createBtn.disabled = true;
+      if (multi.lobbyMessageEl) {
+        multi.lobbyMessageEl.textContent = 'Création de la salle…';
+      }
+      try {
+        const response = await fetch('/api/tetris/rooms', { method: 'POST' });
+        const payload = await response.json();
+        if (!response.ok) {
+          if (payload && payload.error === 'already_in_room' && payload.room_id) {
+            joinLobbyRoom(payload.room_id);
+            if (multi.lobbyMessageEl) {
+              multi.lobbyMessageEl.textContent = 'Tu es déjà dans une salle. Préparation…';
+            }
+            return;
+          }
+          if (payload && payload.error === 'already_in_match' && payload.room_id) {
+            joinLobbyRoom(payload.room_id);
+            return;
+          }
+          throw new Error('Impossible de créer une salle.');
+        }
+        if (multi.lobbyMessageEl) {
+          multi.lobbyMessageEl.textContent = 'Salle créée. En attente d'un adversaire…';
+        }
+        joinLobbyRoom(payload.room_id);
+        fetchTetrisRooms();
+      } catch (error) {
+        if (multi.lobbyMessageEl) {
+          multi.lobbyMessageEl.textContent = error.message || 'Erreur lors de la création de la salle.';
+        }
+      } finally {
+        multi.createBtn.disabled = false;
+      }
+    }
+
+    async function leaveLobbyRoom() {
+      if (!multi.currentLobbyRoomId) return;
+      if (multi.leaveRoomBtn) {
+        multi.leaveRoomBtn.disabled = true;
+      }
+      const roomId = multi.currentLobbyRoomId;
+      try {
+        const response = await fetch(`/api/tetris/rooms/${roomId}/leave`, { method: 'POST' });
+        if (!response.ok) {
+          throw new Error('Impossible de quitter la salle.');
+        }
+        multi.currentLobbyRoomId = null;
+        multi.joinedRoomId = null;
+        if (multi.yourRoomEl) {
+          multi.yourRoomEl.classList.add('hidden');
+        }
+        if (multi.lobbyMessageEl) {
+          multi.lobbyMessageEl.textContent = 'Salle quittée.';
+        }
+        fetchTetrisRooms();
+      } catch (error) {
+        if (multi.lobbyMessageEl) {
+          multi.lobbyMessageEl.textContent = error.message || 'Erreur lors de la sortie de la salle.';
+        }
+      } finally {
+        if (multi.leaveRoomBtn) {
+          multi.leaveRoomBtn.disabled = false;
+        }
       }
     }
 
@@ -1052,10 +1473,21 @@
       multi.game.classList.add('hidden');
       multi.lobby.classList.remove('hidden');
       multi.leaveBtn.disabled = true;
-      updateQueueButtons(false);
-      if (message) {
-        multi.statusEl.textContent = message;
+      multi.gameStatusEl.textContent = '';
+      setEloDisplay(multi.eloEl, multi.eloDeltaEl, '-', null);
+      setEloDisplay(multi.opponentEloEl, multi.opponentEloDeltaEl, '-', null);
+      if (multi.yourRoomEl) {
+        multi.yourRoomEl.classList.add('hidden');
       }
+      multi.joinedRoomId = null;
+      if (multi.lobbyMessageEl) {
+        if (message) {
+          multi.lobbyMessageEl.textContent = message;
+        } else if (!multi.lobbyMessageEl.textContent) {
+          multi.lobbyMessageEl.textContent = 'Rejoins une salle pour lancer un duel.';
+        }
+      }
+      startLobbyPolling(false);
     }
 
     function requestMorePieces() {
@@ -1076,8 +1508,12 @@
     }
 
     function updateMultiScore({ score, lines }) {
-      multi.scoreEl.textContent = score;
-      multi.linesEl.textContent = lines;
+      if (multi.scoreEl) {
+        multi.scoreEl.textContent = score;
+      }
+      if (multi.linesEl) {
+        multi.linesEl.textContent = lines;
+      }
     }
 
     function sendBoardUpdate(payload) {
@@ -1167,15 +1603,15 @@
       }, startDelay);
     }
 
-    multi.searchBtn.addEventListener('click', () => {
-      updateQueueButtons(true);
-      multi.statusEl.textContent = 'Recherche en cours…';
-      socket.emit('tetris_find_match');
-    });
-
-    multi.cancelBtn.addEventListener('click', () => {
-      socket.emit('tetris_cancel_matchmaking');
-    });
+    if (multi.createBtn) {
+      multi.createBtn.addEventListener('click', createLobbyRoom);
+    }
+    if (multi.refreshBtn) {
+      multi.refreshBtn.addEventListener('click', () => fetchTetrisRooms(true));
+    }
+    if (multi.leaveRoomBtn) {
+      multi.leaveRoomBtn.addEventListener('click', leaveLobbyRoom);
+    }
 
     multi.leaveBtn.addEventListener('click', () => {
       if (!multi.inMatch) return;
@@ -1187,22 +1623,22 @@
       socket.emit('tetris_leave_match');
       multi.gameStatusEl.textContent = 'Vous avez quitté la partie. Retour au lobby…';
     });
-
     socket.on('tetris_queue_status', (data) => {
       if (!data || typeof data.status !== 'string') return;
       const status = data.status;
-      if (status === 'searching') {
-        updateQueueButtons(true);
-        multi.statusEl.textContent = 'Recherche en cours…';
-      } else if (status === 'idle') {
-        updateQueueButtons(false);
-        if (!multi.inMatch) {
-          multi.statusEl.textContent = 'Lance une recherche pour affronter un adversaire en duel.';
+      const roomId = data.room_id || null;
+      if (roomId && roomId === multi.currentLobbyRoomId) {
+        if (status === 'waiting') {
+          setYourRoomStatus('En attente d'un adversaire…');
+        } else if (status === 'ready') {
+          const opponent = data.opponent || multi.opponent || 'Adversaire';
+          setYourRoomStatus(`Adversaire trouvé : ${opponent}. Préparation en cours…`);
+        } else if (status === 'matched') {
+          setYourRoomStatus('La partie va commencer !');
         }
-      } else if (status === 'matched') {
-        updateQueueButtons(false);
-        const opponent = data.opponent || 'Adversaire';
-        multi.statusEl.textContent = `Adversaire trouvé (${opponent}). Préparation de la partie…`;
+      }
+      if (!multi.inMatch && status === 'idle' && !multi.currentLobbyRoomId && multi.lobbyMessageEl) {
+        multi.lobbyMessageEl.textContent = 'Rejoins une salle pour lancer un duel.';
       }
     });
 
@@ -1214,7 +1650,17 @@
       multi.opponentNameEl.textContent = multi.opponent;
       multi.pieceQueue = Array.isArray(data.pieces) ? data.pieces.slice() : [];
       multi.pendingRequests = 0;
-      multi.leaveBtn.disabled = false;
+      stopLobbyPolling();
+      if (multi.lobbyMessageEl) {
+        multi.lobbyMessageEl.textContent = '';
+      }
+      if (multi.yourRoomEl) {
+        multi.yourRoomEl.classList.add('hidden');
+      }
+      multi.currentLobbyRoomId = null;
+      multi.joinedRoomId = null;
+      setEloDisplay(multi.eloEl, multi.eloDeltaEl, data.your_elo, null);
+      setEloDisplay(multi.opponentEloEl, multi.opponentEloDeltaEl, data.opponent_elo, null);
       multi.lobby.classList.add('hidden');
       multi.game.classList.remove('hidden');
       renderBoardToCanvas(multi.opponentCanvas, createMatrix(20, 10));
@@ -1291,13 +1737,22 @@
       if (typeof data.opponent_lines === 'number') {
         multi.opponentLinesEl.textContent = data.opponent_lines;
       }
-      resetMultiState(`${message} Score final : ${multi.scoreEl.textContent} - ${multi.opponentScoreEl.textContent}.`);
+      if ('your_elo' in data) {
+        setEloDisplay(multi.eloEl, multi.eloDeltaEl, data.your_elo, data.your_elo_delta);
+      }
+      if ('opponent_elo' in data) {
+        setEloDisplay(multi.opponentEloEl, multi.opponentEloDeltaEl, data.opponent_elo, data.opponent_elo_delta);
+      }
+      const summary = `Score final : ${multi.scoreEl.textContent} - ${multi.opponentScoreEl.textContent}.`;
+      resetMultiState(`${message} ${summary}`.trim());
     });
 
     socket.on('tetris_error', (data) => {
       if (!data || !data.message) return;
-      multi.statusEl.textContent = `Erreur : ${data.message}`;
-      updateQueueButtons(false);
+      const target = multi.inMatch ? multi.gameStatusEl : multi.lobbyMessageEl;
+      if (target) {
+        target.textContent = `Erreur : ${data.message}`;
+      }
     });
 
     socket.on('tetris_left', () => {
@@ -1307,10 +1762,12 @@
     window.addEventListener('beforeunload', () => {
       if (multi.inMatch) {
         socket.emit('tetris_leave_match');
-      } else if (multi.searching) {
-        socket.emit('tetris_cancel_matchmaking');
       }
     });
+
+    if (multiPanel.classList.contains('active')) {
+      startLobbyPolling(true);
+    }
   </script>
 </body>
 </html>
