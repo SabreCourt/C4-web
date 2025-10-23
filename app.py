@@ -701,10 +701,14 @@ def forgot_password():
     return render_template("forgot_password.html", message=message, status=status)
 
 
+@app.route("/reset", defaults={"token": None}, methods=["GET"])
 @app.route("/reset/<token>", methods=["GET", "POST"])
 def reset_password(token):
     message = None
     status = None
+
+    if not token:
+        return redirect(url_for("forgot_password"))
 
     user_id = verify_reset_token(token)
     if user_id == "expired":
