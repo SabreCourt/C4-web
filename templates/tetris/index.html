@@ -1289,12 +1289,12 @@
       const opponent = players.find(name => name !== pseudo);
       const isHost = lobby.host === pseudo;
       if (multi.yourRoomTitleEl) {
-        multi.yourRoomTitleEl.textContent = isHost ? 'Tu es l'hôte de la salle' : `Salle de ${lobby.host || 'votre adversaire'}`;
+        multi.yourRoomTitleEl.textContent = isHost ? "Tu es l'hôte de la salle" : `Salle de ${lobby.host || 'votre adversaire'}`;
       }
       if (opponent) {
         setYourRoomStatus(lobby.status === 'ready' ? `Adversaire trouvé : ${opponent}. Préparation en cours…` : `En attente que ${opponent} rejoigne la partie…`);
       } else {
-        setYourRoomStatus('En attente d'un adversaire…');
+        setYourRoomStatus("En attente d'un adversaire…");
       }
       if (multi.leaveRoomBtn) {
         multi.leaveRoomBtn.disabled = false;
@@ -1386,7 +1386,7 @@
           throw new Error('Impossible de créer une salle.');
         }
         if (multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = 'Salle créée. En attente d'un adversaire…';
+          multi.lobbyMessageEl.textContent = "Salle créée. En attente d'un adversaire…";
         }
         joinLobbyRoom(payload.room_id);
         fetchTetrisRooms();
@@ -1629,7 +1629,7 @@
       const roomId = data.room_id || null;
       if (roomId && roomId === multi.currentLobbyRoomId) {
         if (status === 'waiting') {
-          setYourRoomStatus('En attente d'un adversaire…');
+          setYourRoomStatus("En attente d'un adversaire…");
         } else if (status === 'ready') {
           const opponent = data.opponent || multi.opponent || 'Adversaire';
           setYourRoomStatus(`Adversaire trouvé : ${opponent}. Préparation en cours…`);
