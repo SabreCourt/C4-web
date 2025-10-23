@@ -194,6 +194,31 @@
       outline-offset: 2px;
     }
 
+    .back-btn {
+      display: inline-block;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      text-decoration: none;
+      color: #1b2735;
+      font-weight: 600;
+      font-size: 1rem;
+      background: linear-gradient(90deg, #ff5f6d, #ffc371);
+      box-shadow: 0 8px 20px rgba(255, 95, 109, 0.25);
+      cursor: pointer;
+      transition: all 0.25s ease;
+      align-self: flex-start;
+      width: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .back-btn:hover {
+      transform: translateY(-3px);
+      opacity: 0.9;
+      box-shadow: 0 10px 24px rgba(255, 95, 109, 0.35);
+    }
 
     .input-group button {
       flex: 0 0 auto;
@@ -369,11 +394,7 @@
           <line class="hangman-part jambe-droite" x1="130" y1="160" x2="150" y2="200" />
         </svg>
       </div>
-
-      <div class="footer-links">
-        <a href="{{ url_for('menu') }}">⟵ Retour au menu</a>
-        <span id="pendu-status"></span>
-      </div>
+      <a class="back-btn" href="/menu">⬅️ Retour au menu</a>
     </div>
   </div>
 

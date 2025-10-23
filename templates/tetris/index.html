@@ -233,6 +233,26 @@
       color: #1b2735;
       box-shadow: 0 12px 26px rgba(255, 95, 109, 0.35);
     }
+    .back-btn {
+      display: inline-block;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      text-decoration: none;
+      color: #1b2735;
+      font-weight: 600;
+      font-size: 1rem;
+      background: linear-gradient(90deg, #ff5f6d, #ffc371);
+      box-shadow: 0 8px 20px rgba(255, 95, 109, 0.25);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .back-btn:hover {
+      transform: translateY(-3px);
+      opacity: 0.9;
+      box-shadow: 0 10px 24px rgba(255, 95, 109, 0.35);
+    }
     .status-message {
       margin: 0;
       font-size: 0.95rem;
@@ -471,7 +491,7 @@
         <h1>Tetris</h1>
         <p class="subtitle">Bonjour {{ pseudo }} — choisis un mode de jeu et améliore ton score.</p>
       </div>
-      <a href="{{ url_for('menu') }}" class="btn secondary">⬅️ Retour au menu</a>
+      <a href="{{ url_for('menu') }}" class="back-btn">⬅️ Retour au menu</a>
     </header>
 
     <div class="mode-switch">
