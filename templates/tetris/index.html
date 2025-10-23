@@ -223,6 +223,16 @@
       opacity: 0.55;
       transform: none;
     }
+    .btn.btn-reset {
+      background: linear-gradient(135deg, #6b7280, #9ca3af);
+      color: #f8fafc;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+    }
+    .btn.btn-reset:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
     .btn.secondary {
       background: rgba(255, 255, 255, 0.12);
       color: rgba(240, 244, 248, 0.9);
@@ -257,6 +267,19 @@
       margin: 0;
       font-size: 0.95rem;
       color: rgba(240, 244, 248, 0.82);
+      text-align: center;
+      transition: all 0.25s ease;
+    }
+    .status-message.highlight {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #f8fafc;
+      background: linear-gradient(135deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.1));
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      border-radius: 12px;
+      padding: 12px 16px;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+      margin-top: 8px;
     }
     .multi-lobby,
     .multi-game {
@@ -289,6 +312,19 @@
       min-height: 24px;
       font-size: 0.95rem;
       color: rgba(240, 244, 248, 0.8);
+      transition: all 0.25s ease;
+    }
+    .lobby-message.highlight,
+    .multi-status.highlight {
+      font-weight: 600;
+      color: #f8fafc;
+      background: linear-gradient(135deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.1));
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 12px;
+      padding: 12px 16px;
+      text-align: center;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+      margin-top: 8px;
     }
     .room-list {
       display: flex;
@@ -1090,8 +1126,31 @@
       isSaving: false
     };
 
+    function setSoloStatus(message, highlight = false) {
+      if (!solo.statusEl) return;
+      solo.statusEl.textContent = message || '';
+      if (highlight && message) {
+        solo.statusEl.classList.add('highlight');
+      } else {
+        solo.statusEl.classList.remove('highlight');
+      }
+    }
+
+    function setSoloButtonState({ text, disabled = false, isReset = false }) {
+      if (!solo.startBtn) return;
+      if (typeof text === 'string') {
+        solo.startBtn.textContent = text;
+      }
+      solo.startBtn.disabled = !!disabled;
+      if (isReset) {
+        solo.startBtn.classList.add('btn-reset');
+      } else {
+        solo.startBtn.classList.remove('btn-reset');
+      }
+    }
+
     solo.bestEl.textContent = solo.bestScore;
-    solo.statusEl.textContent = 'Appuie sur « Lancer une partie » pour commencer.';
+    setSoloStatus('Appuie sur « Lancer une partie » pour commencer.');
 
     async function refreshSoloBest() {
       try {
@@ -1151,11 +1210,17 @@
     }
 
     function endSoloGame(result) {
-      solo.statusEl.textContent = result.reason === 'top_out'
-        ? `Partie terminée. Score : ${result.score}`
-        : 'Partie terminée.';
+      const scoreText = typeof result.score === 'number' ? `Score : ${result.score}` : '';
+      const linesText = typeof result.lines === 'number' && result.lines > 0 ? ` • Lignes : ${result.lines}` : '';
+      const prefix = result.reason === 'top_out' ? '💥 Fin de partie !' : '🎉 Partie terminée !';
+      setSoloStatus(`${prefix} ${scoreText}${linesText}`.trim(), true);
+      setSoloButtonState({ text: '🔄 Nouvelle partie', disabled: false, isReset: true });
       activeGame = null;
+      solo.game = null;
       saveSoloScore(result.score);
+      if (solo.startBtn && typeof solo.startBtn.focus === 'function') {
+        solo.startBtn.focus({ preventScroll: true });
+      }
     }
 
     function startSoloGame() {
@@ -1163,6 +1228,8 @@
         solo.game.stop();
       }
       const pieceSource = createBagGenerator();
+      setSoloButtonState({ text: '🕹️ Partie en cours…', disabled: true, isReset: false });
+      setSoloStatus('Bonne partie !');
       solo.game = new TetrisGame({
         canvas: solo.canvas,
         previewContainer: solo.next,
@@ -1174,9 +1241,13 @@
       });
       solo.scoreEl.textContent = '0';
       solo.linesEl.textContent = '0';
-      solo.statusEl.textContent = 'Bonne partie !';
       activeGame = solo.game;
       solo.game.start();
+      setTimeout(() => {
+        if (solo.startBtn && solo.startBtn.disabled && typeof solo.startBtn.blur === 'function') {
+          solo.startBtn.blur();
+        }
+      }, 0);
     }
 
     solo.startBtn.addEventListener('click', startSoloGame);
@@ -1222,6 +1293,26 @@
       lobbyPolling: null,
     };
 
+    function setLobbyMessage(message, highlight = false) {
+      if (!multi.lobbyMessageEl) return;
+      multi.lobbyMessageEl.textContent = message || '';
+      if (message && highlight) {
+        multi.lobbyMessageEl.classList.add('highlight');
+      } else if (!message || !highlight) {
+        multi.lobbyMessageEl.classList.remove('highlight');
+      }
+    }
+
+    function setMultiGameStatus(message, highlight = false) {
+      if (!multi.gameStatusEl) return;
+      multi.gameStatusEl.textContent = message || '';
+      if (message && highlight) {
+        multi.gameStatusEl.classList.add('highlight');
+      } else if (!message || !highlight) {
+        multi.gameStatusEl.classList.remove('highlight');
+      }
+    }
+
     function setEloDisplay(valueEl, deltaEl, rating, delta) {
       if (valueEl) {
         if (typeof rating === 'number' && !Number.isNaN(rating)) {
@@ -1258,8 +1349,8 @@
 
     function startLobbyPolling(initial = false) {
       if (multi.lobbyPolling) return;
-      if (initial && multi.lobbyMessageEl && !multi.lobbyMessageEl.textContent) {
-        multi.lobbyMessageEl.textContent = 'Rejoins une salle pour lancer un duel.';
+      if (initial && (!multi.lobbyMessageEl || !multi.lobbyMessageEl.textContent)) {
+        setLobbyMessage('Rejoins une salle pour lancer un duel.');
       }
       fetchTetrisRooms();
       multi.lobbyPolling = setInterval(fetchTetrisRooms, 5000);
@@ -1279,13 +1370,11 @@
         }
         const data = await response.json();
         handleLobbyData(data || {});
-        if (manual && multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = 'Liste mise à jour.';
+        if (manual) {
+          setLobbyMessage('Liste mise à jour.');
         }
       } catch (error) {
-        if (multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = error.message || 'Erreur lors de la récupération des salles.';
-        }
+        setLobbyMessage(error.message || 'Erreur lors de la récupération des salles.');
       }
     }
 
@@ -1320,8 +1409,8 @@
       const availableRooms = rooms.filter(room => room.status === 'waiting' && Array.isArray(room.players) && room.players.length === 1 && room.host !== pseudo);
       renderRoomList(availableRooms);
 
-      if (!multi.currentLobbyRoomId && multi.lobbyMessageEl && !multi.lobbyMessageEl.textContent) {
-        multi.lobbyMessageEl.textContent = availableRooms.length ? 'Choisis une salle pour jouer.' : 'Crée une salle pour lancer un duel.';
+      if (!multi.currentLobbyRoomId && (!multi.lobbyMessageEl || !multi.lobbyMessageEl.textContent)) {
+        setLobbyMessage(availableRooms.length ? 'Choisis une salle pour jouer.' : 'Crée une salle pour lancer un duel.');
       }
     }
 
@@ -1377,49 +1466,37 @@
 
     async function joinLobbyRoomRequest(roomId) {
       if (!roomId) return;
-      if (multi.lobbyMessageEl) {
-        multi.lobbyMessageEl.textContent = 'Connexion à la salle…';
-      }
+      setLobbyMessage('Connexion à la salle…');
       try {
         const response = await fetch(`/api/tetris/rooms/${roomId}/join`, { method: 'POST' });
         const payload = await response.json();
         if (!response.ok) {
           if (payload && payload.error === 'already_in_room' && payload.room_id) {
             joinLobbyRoom(payload.room_id);
-            if (multi.lobbyMessageEl) {
-              multi.lobbyMessageEl.textContent = 'Tu es déjà dans cette salle.';
-            }
+            setLobbyMessage('Tu es déjà dans cette salle.');
             return;
           }
           throw new Error('Impossible de rejoindre la salle.');
         }
-        if (multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = 'Salle rejointe. Préparation…';
-        }
+        setLobbyMessage('Salle rejointe. Préparation…');
         joinLobbyRoom(payload.room_id);
         fetchTetrisRooms();
       } catch (error) {
-        if (multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = error.message || 'Erreur lors de la tentative de rejoindre la salle.';
-        }
+        setLobbyMessage(error.message || 'Erreur lors de la tentative de rejoindre la salle.');
       }
     }
 
     async function createLobbyRoom() {
       if (!multi.createBtn) return;
       multi.createBtn.disabled = true;
-      if (multi.lobbyMessageEl) {
-        multi.lobbyMessageEl.textContent = 'Création de la salle…';
-      }
+      setLobbyMessage('Création de la salle…');
       try {
         const response = await fetch('/api/tetris/rooms', { method: 'POST' });
         const payload = await response.json();
         if (!response.ok) {
           if (payload && payload.error === 'already_in_room' && payload.room_id) {
             joinLobbyRoom(payload.room_id);
-            if (multi.lobbyMessageEl) {
-              multi.lobbyMessageEl.textContent = 'Tu es déjà dans une salle. Préparation…';
-            }
+            setLobbyMessage('Tu es déjà dans une salle. Préparation…');
             return;
           }
           if (payload && payload.error === 'already_in_match' && payload.room_id) {
@@ -1428,15 +1505,11 @@
           }
           throw new Error('Impossible de créer une salle.');
         }
-        if (multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = "Salle créée. En attente d'un adversaire…";
-        }
+        setLobbyMessage("Salle créée. En attente d'un adversaire…");
         joinLobbyRoom(payload.room_id);
         fetchTetrisRooms();
       } catch (error) {
-        if (multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = error.message || 'Erreur lors de la création de la salle.';
-        }
+        setLobbyMessage(error.message || 'Erreur lors de la création de la salle.');
       } finally {
         multi.createBtn.disabled = false;
       }
@@ -1458,14 +1531,10 @@
         if (multi.yourRoomEl) {
           multi.yourRoomEl.classList.add('hidden');
         }
-        if (multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = 'Salle quittée.';
-        }
+        setLobbyMessage('Salle quittée.');
         fetchTetrisRooms();
       } catch (error) {
-        if (multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = error.message || 'Erreur lors de la sortie de la salle.';
-        }
+        setLobbyMessage(error.message || 'Erreur lors de la sortie de la salle.');
       } finally {
         if (multi.leaveRoomBtn) {
           multi.leaveRoomBtn.disabled = false;
@@ -1516,19 +1585,19 @@
       multi.game.classList.add('hidden');
       multi.lobby.classList.remove('hidden');
       multi.leaveBtn.disabled = true;
-      multi.gameStatusEl.textContent = '';
+      setMultiGameStatus('', false);
       setEloDisplay(multi.eloEl, multi.eloDeltaEl, '-', null);
       setEloDisplay(multi.opponentEloEl, multi.opponentEloDeltaEl, '-', null);
       if (multi.yourRoomEl) {
         multi.yourRoomEl.classList.add('hidden');
       }
       multi.joinedRoomId = null;
-      if (multi.lobbyMessageEl) {
-        if (message) {
-          multi.lobbyMessageEl.textContent = message;
-        } else if (!multi.lobbyMessageEl.textContent) {
-          multi.lobbyMessageEl.textContent = 'Rejoins une salle pour lancer un duel.';
-        }
+      if (message) {
+        setLobbyMessage(message, true);
+      } else if (!multi.lobbyMessageEl || !multi.lobbyMessageEl.textContent) {
+        setLobbyMessage('Rejoins une salle pour lancer un duel.');
+      } else {
+        setLobbyMessage(multi.lobbyMessageEl.textContent, false);
       }
       startLobbyPolling(false);
     }
@@ -1572,7 +1641,7 @@
     function handleMultiGameOver(result) {
       if (multi.reportedGameOver) return;
       multi.reportedGameOver = true;
-      multi.gameStatusEl.textContent = 'Vous êtes éliminé. En attente du résultat final…';
+      setMultiGameStatus('Vous êtes éliminé. En attente du résultat final…', true);
       if (multi.roomId) {
         socket.emit('tetris_game_over', {
           room_id: multi.roomId,
@@ -1592,7 +1661,7 @@
       multi.linesEl.textContent = '0';
       multi.opponentScoreEl.textContent = '0';
       multi.opponentLinesEl.textContent = '0';
-      multi.gameStatusEl.textContent = 'La partie commence !';
+      setMultiGameStatus('La partie commence !');
       multi.reportedGameOver = false;
       multi.gameInstance = new TetrisGame({
         canvas: multi.boardCanvas,
@@ -1626,15 +1695,15 @@
         return;
       }
       const target = Date.now() + startDelay;
-      multi.gameStatusEl.textContent = `Début dans ${(startDelay / 1000).toFixed(1)} s`;
+      setMultiGameStatus(`Début dans ${(startDelay / 1000).toFixed(1)} s`);
       multi.countdownInterval = setInterval(() => {
         const remaining = Math.max(0, target - Date.now());
         if (remaining <= 0) {
           clearInterval(multi.countdownInterval);
           multi.countdownInterval = null;
-          multi.gameStatusEl.textContent = 'La partie commence !';
+          setMultiGameStatus('La partie commence !');
         } else {
-          multi.gameStatusEl.textContent = `Début dans ${(remaining / 1000).toFixed(1)} s`;
+          setMultiGameStatus(`Début dans ${(remaining / 1000).toFixed(1)} s`);
         }
       }, 100);
       multi.startTimeout = setTimeout(() => {
@@ -1665,7 +1734,7 @@
       }
       activeGame = null;
       socket.emit('tetris_leave_match');
-      multi.gameStatusEl.textContent = 'Vous avez quitté la partie. Retour au lobby…';
+      setMultiGameStatus('Vous avez quitté la partie. Retour au lobby…', true);
     });
     socket.on('tetris_queue_status', (data) => {
       if (!data || typeof data.status !== 'string') return;
@@ -1681,8 +1750,8 @@
           setYourRoomStatus('La partie va commencer !');
         }
       }
-      if (!multi.inMatch && status === 'idle' && !multi.currentLobbyRoomId && multi.lobbyMessageEl) {
-        multi.lobbyMessageEl.textContent = 'Rejoins une salle pour lancer un duel.';
+      if (!multi.inMatch && status === 'idle' && !multi.currentLobbyRoomId) {
+        setLobbyMessage('Rejoins une salle pour lancer un duel.');
       }
     });
 
@@ -1695,9 +1764,7 @@
       multi.pieceQueue = Array.isArray(data.pieces) ? data.pieces.slice() : [];
       multi.pendingRequests = 0;
       stopLobbyPolling();
-      if (multi.lobbyMessageEl) {
-        multi.lobbyMessageEl.textContent = '';
-      }
+      setLobbyMessage('', false);
       if (multi.yourRoomEl) {
         multi.yourRoomEl.classList.add('hidden');
       }
@@ -1708,7 +1775,7 @@
       multi.lobby.classList.add('hidden');
       multi.game.classList.remove('hidden');
       renderBoardToCanvas(multi.opponentCanvas, createMatrix(20, 10));
-      multi.gameStatusEl.textContent = 'Préparation de la partie…';
+      setMultiGameStatus('Préparation de la partie…');
       scheduleMatchStart(data);
     });
 
@@ -1744,7 +1811,7 @@
       if (!multi.inMatch || !data) return;
       if (multi.roomId && data.room_id && data.room_id !== multi.roomId) return;
       const name = data.opponent || multi.opponent || 'Adversaire';
-      multi.gameStatusEl.textContent = `${name} est éliminé !`;
+      setMultiGameStatus(`${name} est éliminé !`, true);
       if (typeof data.score === 'number') {
         multi.opponentScoreEl.textContent = data.score;
       }
@@ -1793,9 +1860,11 @@
 
     socket.on('tetris_error', (data) => {
       if (!data || !data.message) return;
-      const target = multi.inMatch ? multi.gameStatusEl : multi.lobbyMessageEl;
-      if (target) {
-        target.textContent = `Erreur : ${data.message}`;
+      const message = `Erreur : ${data.message}`;
+      if (multi.inMatch) {
+        setMultiGameStatus(message, true);
+      } else {
+        setLobbyMessage(message, true);
       }
     });
 
