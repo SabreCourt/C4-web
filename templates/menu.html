@@ -2,165 +2,263 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Menu des jeux</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neo Arcade Hub</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
   <style>
     body {
-      height: 100vh;
-      margin: 0;
+      perspective: 1200px;
+    }
+    .hub-hero {
+      display: grid;
+      gap: clamp(20px, 3vw, 32px);
+      text-align: center;
+    }
+    .hub-hero__headline {
+      display: grid;
+      gap: 12px;
+    }
+    .hub-hero__intro {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .hub-hero__cta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+    }
+    .hub-sound-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      background: rgba(15, 23, 42, 0.45);
+      color: var(--color-text);
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+    .hub-sound-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--glow-cyan);
+    }
+    .hub-grid {
+      display: grid;
+      gap: clamp(24px, 3vw, 32px);
+    }
+    .hub-grid__row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: clamp(20px, 3vw, 32px);
+    }
+    .game-card__art {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.4;
+      mix-blend-mode: screen;
+      pointer-events: none;
+      transition: transform var(--transition-slow);
+    }
+    .game-card:hover .game-card__art {
+      transform: scale(1.08) translateY(-4px);
+    }
+    .game-card__content {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 18px;
+    }
+    .game-card__footer {
       display: flex;
       align-items: center;
-      justify-content: center;
-      position: relative;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: #f0f4f8;
-      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
+      justify-content: space-between;
+      gap: 12px;
     }
-
-    .menu {
-      width: 90%;
-      max-width: 520px;
-      padding: 40px 36px;
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(12px);
-      box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
-      text-align: center;
-      animation: fadeIn 0.6s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    h1 {
-      margin-top: 0;
-      margin-bottom: 1rem;
-      font-size: 2.2rem;
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    p {
-      margin-bottom: 2rem;
-      color: rgba(240, 244, 248, 0.85);
-      line-height: 1.5;
-    }
-
-    .games {
-      display: grid;
-      gap: 14px;
-    }
-
-    .game-btn {
-      padding: 16px;
-      border: none;
-      border-radius: 10px;
-      font-size: 1.05rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s ease, opacity 0.2s ease;
-      width: 100%;
-      display: block;
-    }
-
-    .games form {
-      margin: 0;
-      width: 100%;
-    }
-
-    .games form button {
-      width: 100%;
-    }
-
-    .game-btn.primary {
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      color: #031427;
-    }
-
-    .game-btn.primary:hover {
-      transform: translateY(-2px);
-      opacity: 0.92;
-    }
-
-    .game-btn:disabled {
-      background: rgba(255, 255, 255, 0.08);
-      color: rgba(255, 255, 255, 0.45);
-      cursor: not-allowed;
-    }
-
-    .actions {
-      margin-top: 2.5rem;
-      display: flex;
-      justify-content: center;
-    }
-
-    .logout-btn {
-      padding: 12px 26px;
-      border-radius: 999px;
-      border: none;
-      background: rgba(255, 255, 255, 0.08);
-      color: #f0f4f8;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.2s ease;
-    }
-
-    .logout-btn:hover {
-      opacity: 0.85;
-    }
-
-    .profile-btn {
-      position: absolute;
-      top: 24px;
-      left: 24px;
+    .profile-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
       padding: 10px 18px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.1);
-      color: #f0f4f8;
-      font-weight: 600;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+    .hub-footer {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+      text-align: center;
+    }
+    .hub-footer__links {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .hub-footer__links a {
+      color: var(--color-muted);
       text-decoration: none;
-      transition: opacity 0.2s ease, transform 0.2s ease;
+      transition: color var(--transition-fast);
     }
-
-    .profile-btn:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
+    .hub-footer__links a:hover {
+      color: var(--color-cyan);
     }
-
-    @media (max-width: 520px) {
-      .profile-btn {
-        top: 16px;
-        left: 16px;
-        padding: 8px 14px;
+    .portal-transition {
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.45), transparent 65%);
+    }
+    @media (max-width: 720px) {
+      .game-card__footer {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .profile-chip {
+        align-self: stretch;
+        justify-content: center;
       }
     }
   </style>
 </head>
 <body>
-  <a href="{{ url_for('profile') }}" class="profile-btn">👤 Profil</a>
-  <div class="menu">
-    <h1>Bienvenue {{ pseudo }}</h1>
-    <p>Sélectionnez un jeu pour commencer. Puissance 4 et le Pendu sont disponibles !</p>
-    <div class="games">
-      <form method="GET" action="{{ url_for('lobby') }}">
-        <button type="submit" class="game-btn primary">⭕ Puissance 4</button>
-      </form>
-      <form method="GET" action="{{ url_for('pendu') }}">
-        <button type="submit" class="game-btn primary">🔤 Pendu</button>
-      </form>
-      <form method="GET" action="{{ url_for('tetris') }}">
-        <button type="submit" class="game-btn primary">🧱 Tetris</button>
-      </form>
-      <button type="button" class="game-btn" disabled>♞ Échecs (bientôt)</button>
+  <div class="portal-transition" id="portal"></div>
+  <header class="nav-hub neo-glass">
+    <div class="profile-chip">
+      <span>🧑‍🚀</span>
+      <span>{{ pseudo }}</span>
     </div>
-    <div class="actions">
+    <nav class="nav-items" aria-label="Sélection des jeux">
+      <a class="nav-item is-active" data-game="hub" href="#hub">Hub</a>
+      <a class="nav-item" data-game="puissance4" href="{{ url_for('lobby') }}">Puissance 4</a>
+      <a class="nav-item" data-game="pendu" href="{{ url_for('pendu') }}">Pendu</a>
+      <a class="nav-item" data-game="tetris" href="{{ url_for('tetris') }}">Tetris</a>
+      <span class="nav-item" data-game="echecs" aria-disabled="true">Échecs</span>
+    </nav>
+    <div class="hub-hero__cta">
       <form method="POST" action="/logout">
-        <button type="submit" class="logout-btn">🚪 Déconnexion</button>
+        <button type="submit" class="neo-button secondary">Déconnexion</button>
       </form>
+      <a class="neo-button secondary" href="{{ url_for('profile') }}">Profil</a>
+      <button class="hub-sound-toggle" type="button">🔊 Ambiance</button>
     </div>
-  </div>
+  </header>
+  <main id="hub">
+    <section class="hub-hero">
+      <div class="hub-hero__headline">
+        <h1>Neo Arcade Hub</h1>
+        <p class="hub-hero__intro">
+          Plongez dans une salle d'arcade virtuelle où chaque jeu possède sa propre atmosphère. Des néons synthwave aux textures
+          tactiles, choisissez votre univers et lancez une nouvelle partie en un clic.
+        </p>
+      </div>
+      <div class="hub-hero__cta">
+        <a class="neo-button primary" href="#games">Nouvelle partie</a>
+        <a class="neo-button secondary" href="{{ url_for('profile') }}">Voir les classements</a>
+      </div>
+    </section>
+
+    <section class="hub-grid" id="games">
+      <div class="hub-grid__row">
+        <article class="game-card neo-card game-theme--puissance4">
+          <div class="game-card__art"></div>
+          <div class="game-card__content">
+            <span class="game-card__badge">NEON GRID</span>
+            <h2 class="game-card__title">Puissance 4</h2>
+            <p class="game-card__description">
+              Grille 3D immersive, pions lumineux et ambiance synthwave. Affrontez l'IA ou un ami dans un duel vibrant.
+            </p>
+            <div class="game-card__footer">
+              <form method="GET" action="{{ url_for('lobby') }}">
+                <button type="submit" class="neo-button primary">Jouer</button>
+              </form>
+              <span class="status-banner">Accessible</span>
+            </div>
+          </div>
+        </article>
+        <article class="game-card neo-card game-theme--pendu">
+          <div class="game-card__art"></div>
+          <div class="game-card__content">
+            <span class="game-card__badge">PAPIER &amp; PIXEL</span>
+            <h2 class="game-card__title">Pendu</h2>
+            <p class="game-card__description">
+              Papier texturé et pixels lumineux. Tapez, effacez, découvrez le mot avant que la silhouette ne se dessine.
+            </p>
+            <div class="game-card__footer">
+              <form method="GET" action="{{ url_for('pendu') }}">
+                <button type="submit" class="neo-button primary">Jouer</button>
+              </form>
+              <span class="status-banner">Accessible</span>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div class="hub-grid__row">
+        <article class="game-card neo-card game-theme--tetris">
+          <div class="game-card__art"></div>
+          <div class="game-card__content">
+            <span class="game-card__badge">DIGITAL BLOCKS</span>
+            <h2 class="game-card__title">Tetris</h2>
+            <p class="game-card__description">
+              Blocs lumineux en apesanteur, ambiance cyberpunk douce, modes solo ou duel en ligne.
+            </p>
+            <div class="game-card__footer">
+              <form method="GET" action="{{ url_for('tetris') }}">
+                <button type="submit" class="neo-button primary">Jouer</button>
+              </form>
+              <span class="status-banner">Accessible</span>
+            </div>
+          </div>
+        </article>
+        <article class="game-card neo-card game-theme--echecs">
+          <div class="game-card__art"></div>
+          <div class="game-card__content">
+            <span class="game-card__badge">ROYAL MINIMAL</span>
+            <h2 class="game-card__title">Échecs</h2>
+            <p class="game-card__description">
+              Damier élégant, pièces dorées, interface minimaliste. Préparez-vous à l'ouverture du portail royal.
+            </p>
+            <div class="game-card__footer">
+              <button type="button" class="neo-button secondary" disabled>Prochainement</button>
+              <span class="status-banner error">En construction</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="hub-footer">
+      <div class="hub-footer__links">
+        <a href="{{ url_for('profile') }}">Profil</a>
+        <a href="{{ url_for('reset_password') }}">Réinitialiser le mot de passe</a>
+        <a href="mailto:support@example.com">Support</a>
+      </div>
+      <small>Transitions 3D, glassmorphism léger et néons subtils pour une immersion totale.</small>
+    </footer>
+  </main>
+
+  <script>
+    const portal = document.getElementById('portal');
+    const links = document.querySelectorAll('.nav-item[href]');
+
+    links.forEach(link => {
+      link.addEventListener('click', event => {
+        if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+          return;
+        }
+
+        event.preventDefault();
+        portal.classList.add('is-active');
+        setTimeout(() => {
+          portal.classList.remove('is-active');
+          window.location.assign(link.href);
+        }, 360);
+      });
+    });
+  </script>
 </body>
 </html>

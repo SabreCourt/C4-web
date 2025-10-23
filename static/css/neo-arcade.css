@@ -1,0 +1,356 @@
+/* Neo Arcade Hub — Global Art Direction */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Poppins:wght@400;500;600&display=swap');
+
+:root {
+  color-scheme: dark;
+  --color-bg: #0f172a;
+  --color-bg-alt: #111b2f;
+  --color-surface: rgba(15, 23, 42, 0.65);
+  --color-surface-strong: rgba(15, 23, 42, 0.85);
+  --color-border: rgba(148, 163, 184, 0.24);
+  --color-text: #f8fafc;
+  --color-muted: rgba(148, 163, 184, 0.75);
+  --color-cyan: #38bdf8;
+  --color-magenta: #f472b6;
+  --color-orange: #fb923c;
+  --glow-cyan: 0 0 22px rgba(56, 189, 248, 0.55);
+  --glow-magenta: 0 0 22px rgba(244, 114, 182, 0.45);
+  --glow-orange: 0 0 22px rgba(251, 146, 60, 0.35);
+  --radius-lg: 28px;
+  --radius-md: 18px;
+  --radius-sm: 12px;
+  --shadow-soft: 0 24px 64px rgba(8, 47, 73, 0.45);
+  --shadow-hard: 0 18px 40px rgba(0, 0, 0, 0.55);
+  --transition-fast: 160ms ease;
+  --transition-base: 320ms cubic-bezier(0.33, 1, 0.68, 1);
+  --transition-slow: 640ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Poppins', 'Segoe UI', sans-serif;
+  color: var(--color-text);
+  background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.16), transparent 45%),
+    radial-gradient(circle at 80% 10%, rgba(244, 114, 182, 0.16), transparent 55%),
+    linear-gradient(160deg, #0f172a 0%, #020617 100%);
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.2), transparent 60%);
+  opacity: 0.65;
+  filter: blur(120px);
+  z-index: -1;
+}
+
+main {
+  width: min(1240px, 92vw);
+  margin: clamp(24px, 8vh, 80px) auto;
+  display: grid;
+  gap: clamp(24px, 4vw, 48px);
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Orbitron', 'Poppins', sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-weight: 600;
+  font-size: clamp(2.4rem, 4vw, 3rem);
+}
+
+h2 {
+  font-size: clamp(1.8rem, 3vw, 2.2rem);
+}
+
+p {
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+.neo-glass {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-soft);
+}
+
+.neo-card {
+  position: relative;
+  padding: clamp(24px, 3vw, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow: hidden;
+}
+
+.neo-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(244, 114, 182, 0.12));
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  pointer-events: none;
+}
+
+.neo-card:hover::before {
+  opacity: 1;
+}
+
+.neo-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  padding: 0.95em 1.8em;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast);
+}
+
+.neo-button.primary {
+  color: #0f172a;
+  background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+  box-shadow: 0 14px 28px rgba(56, 189, 248, 0.35);
+}
+
+.neo-button.secondary {
+  color: var(--color-text);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+}
+
+.neo-button.danger {
+  color: #0b1120;
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  box-shadow: 0 14px 28px rgba(251, 146, 60, 0.32);
+}
+
+.neo-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+
+.neo-button:focus-visible {
+  outline: 3px solid rgba(56, 189, 248, 0.45);
+  outline-offset: 2px;
+}
+
+.nav-hub {
+  position: sticky;
+  top: 16px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 24px;
+  border-radius: var(--radius-lg);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 12px 32px rgba(8, 47, 73, 0.45);
+}
+
+.nav-hub .nav-items {
+  display: flex;
+  gap: clamp(12px, 1.8vw, 20px);
+}
+
+.nav-item {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  text-decoration: none;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.nav-item::after {
+  content: '';
+  position: absolute;
+  inset: auto 18px -6px 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.nav-item:hover {
+  transform: translateY(-4px) translateZ(0);
+  box-shadow: var(--glow-cyan);
+}
+
+.nav-item[data-game='puissance4']:hover { box-shadow: 0 0 22px rgba(56, 189, 248, 0.6); }
+.nav-item[data-game='pendu']:hover { box-shadow: 0 0 22px rgba(244, 114, 182, 0.55); }
+.nav-item[data-game='tetris']:hover { box-shadow: 0 0 22px rgba(129, 140, 248, 0.55); }
+.nav-item[data-game='echecs']:hover { box-shadow: 0 0 22px rgba(251, 191, 36, 0.55); }
+
+.nav-item.is-active {
+  background: rgba(56, 189, 248, 0.18);
+}
+
+.nav-item.is-active::after {
+  background: linear-gradient(135deg, #38bdf8, #f472b6);
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: clamp(20px, 3vw, 32px);
+}
+
+.game-card {
+  position: relative;
+  min-height: 260px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(18px);
+  padding: clamp(20px, 3vw, 28px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), var(--shadow-soft);
+}
+
+.game-card__badge {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+}
+
+.game-card__title {
+  font-family: 'Orbitron', 'Poppins', sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.game-card__description {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+.game-card__action {
+  margin-top: auto;
+}
+
+.status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-radius: var(--radius-md);
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.status-banner.success {
+  background: rgba(244, 114, 182, 0.12);
+  border-color: rgba(244, 114, 182, 0.45);
+}
+
+.status-banner.error {
+  background: rgba(251, 146, 60, 0.12);
+  border-color: rgba(251, 146, 60, 0.45);
+}
+
+@media (max-width: 768px) {
+  .nav-hub {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .nav-hub .nav-items {
+    justify-content: space-between;
+  }
+  .nav-item {
+    flex: 1 1 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- THEME PER GAME --- */
+
+.game-theme--puissance4 {
+  background: radial-gradient(circle at 50% 10%, rgba(56, 189, 248, 0.22), transparent 65%),
+    repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.08) 0px, rgba(56, 189, 248, 0.08) 1px, transparent 1px, transparent 32px),
+    repeating-linear-gradient(0deg, rgba(244, 114, 182, 0.08) 0px, rgba(244, 114, 182, 0.08) 1px, transparent 1px, transparent 32px);
+}
+
+.game-theme--pendu {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(17, 24, 39, 0.92)),
+    url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" fill="none"><path d="M0 118h120" stroke="rgba(148,163,184,0.18)" stroke-width="2"/><path d="M2 0v120" stroke="rgba(56,189,248,0.12)" stroke-width="2" stroke-dasharray="6 6"/></svg>');
+  background-size: cover, 180px;
+}
+
+.game-theme--tetris {
+  background: radial-gradient(circle at 10% 80%, rgba(129, 140, 248, 0.16), transparent 65%),
+    radial-gradient(circle at 90% 20%, rgba(56, 189, 248, 0.18), transparent 60%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.9), rgba(17, 24, 39, 0.95));
+}
+
+.game-theme--echecs {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(12, 20, 33, 0.95));
+}
+
+/* Portal transition utility */
+.portal-transition {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(56, 189, 248, 0.75), transparent 65%);
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity var(--transition-slow), transform var(--transition-slow), filter var(--transition-slow);
+}
+
+.portal-transition.is-active {
+  opacity: 1;
+  transform: scale(1.45);
+  filter: blur(18px);
+}
+
