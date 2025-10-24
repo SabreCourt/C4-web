@@ -1379,6 +1379,30 @@ body.theme-tetris {
   gap: 8px;
 }
 
+.page-tetris .preview-piece {
+  --cell-size: 18px;
+  display: grid;
+  grid-template-rows: repeat(var(--rows), var(--cell-size));
+  grid-template-columns: repeat(var(--cols), var(--cell-size));
+  gap: 2px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.55);
+  box-shadow: inset 0 0 12px rgba(56, 189, 248, 0.15);
+}
+
+.page-tetris .preview-cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border-radius: 4px;
+  background: rgba(248, 250, 252, 0.18);
+  box-shadow: inset 0 0 6px rgba(15, 23, 42, 0.45);
+}
+
+.page-tetris .preview-cell.filled {
+  box-shadow: 0 0 10px rgba(248, 250, 252, 0.45);
+}
+
 .page-tetris .controls {
   background: rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-md);
@@ -1398,6 +1422,31 @@ body.theme-tetris {
 
 .page-tetris .controls .control-copy strong {
   color: var(--color-text);
+}
+
+.page-tetris .ready-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.page-tetris .ready-panel.hidden {
+  display: none;
+}
+
+.page-tetris .ready-panel .ready-status {
+  font-size: 0.95rem;
+  color: rgba(248, 250, 252, 0.75);
+}
+
+.page-tetris .ready-panel .ready-status strong {
+  color: var(--color-text);
+}
+
+.page-tetris .neo-button.is-ready {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: rgba(16, 185, 129, 0.9);
 }
 
 .page-tetris .lobby-actions,
@@ -1541,6 +1590,49 @@ body.theme-tetris {
 .page-tetris .elo-delta {
   color: var(--color-cyan);
   text-align: right;
+}
+
+.page-tetris .elo-delta.positive {
+  color: #10b981;
+}
+
+.page-tetris .elo-delta.negative {
+  color: #f87171;
+}
+
+.page-tetris .elo-delta.neutral {
+  color: rgba(248, 250, 252, 0.7);
+}
+
+.page-tetris .multi-post-game {
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 0 0 1px rgba(248, 250, 252, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.page-tetris .multi-post-game.hidden {
+  display: none;
+}
+
+.page-tetris .multi-post-game h3 {
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.page-tetris .multi-post-game .post-game-summary {
+  color: rgba(248, 250, 252, 0.78);
+}
+
+.page-tetris .multi-post-game .post-game-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .page-tetris .back-link {

@@ -115,7 +115,18 @@
                 <div class="board-card hero-board">
                   <canvas id="multi-board" class="game-board" width="240" height="480"></canvas>
                 </div>
+                <div id="multi-ready-panel" class="ready-panel hidden" aria-live="polite">
+                  <button id="multi-ready" class="btn neo-button primary">▶️ Lancer la partie</button>
+                  <p id="multi-ready-status" class="ready-status">Les deux joueurs doivent appuyer sur « Lancer la partie ».</p>
+                </div>
                 <p id="multi-game-status" class="multi-status"></p>
+                <div id="multi-post-game" class="multi-post-game hidden" aria-live="polite">
+                  <h3 id="multi-result-message">Partie terminée</h3>
+                  <p id="multi-result-summary" class="post-game-summary"></p>
+                  <div class="post-game-actions">
+                    <button id="multi-postgame-new" class="btn neo-button primary rematch">Nouvelle partie</button>
+                  </div>
+                </div>
               </div>
               <aside class="player-sidebar">
                 <div class="next-wrapper">
@@ -881,11 +892,19 @@
       opponentLinesEl: document.getElementById('multi-opponent-lines'),
       opponentNameEl: document.getElementById('multi-opponent-name'),
       gameStatusEl: document.getElementById('multi-game-status'),
+      readyPanel: document.getElementById('multi-ready-panel'),
+      readyBtn: document.getElementById('multi-ready'),
+      readyStatusEl: document.getElementById('multi-ready-status'),
+      postGameEl: document.getElementById('multi-post-game'),
+      postGameMessageEl: document.getElementById('multi-result-message'),
+      postGameSummaryEl: document.getElementById('multi-result-summary'),
+      postGameNewBtn: document.getElementById('multi-postgame-new'),
       eloEl: document.getElementById('multi-elo'),
       eloDeltaEl: document.getElementById('multi-elo-delta'),
       opponentEloEl: document.getElementById('multi-opponent-elo'),
       opponentEloDeltaEl: document.getElementById('multi-opponent-elo-delta'),
       inMatch: false,
+      waitingForStart: false,
       roomId: null,
       opponent: null,
       pieceQueue: [],
@@ -897,13 +916,38 @@
       currentLobbyRoomId: null,
       joinedRoomId: null,
       lobbyPolling: null,
+      isReady: false,
+      opponentReady: false,
     };
 
     const defaultLobbyHelpText = multi.lobbyHelpEl ? multi.lobbyHelpEl.textContent : '';
     const defaultRoomHintText = multi.roomHintEl ? multi.roomHintEl.textContent : '';
     const joinerRoomHintText = 'Reste dans la salle jusqu’au lancement de la partie.';
+    const defaultReadyStatusText = multi.readyStatusEl
+      ? multi.readyStatusEl.textContent
+      : 'Les deux joueurs doivent appuyer sur « Lancer la partie ».';
 
     setupTouchControls(multi.boardCanvas);
+
+    if (multi.readyBtn) {
+      multi.readyBtn.addEventListener('click', () => {
+        if (!multi.roomId || (!multi.waitingForStart && !multi.isReady)) {
+          return;
+        }
+        const nextReady = !multi.isReady;
+        multi.readyBtn.disabled = true;
+        socket.emit('tetris_set_ready', { room_id: multi.roomId, ready: nextReady });
+      });
+    }
+
+    if (multi.postGameNewBtn) {
+      multi.postGameNewBtn.addEventListener('click', () => {
+        resetMultiState('Choisis une salle pour relancer un duel.');
+        if (multi.createBtn) {
+          multi.createBtn.focus();
+        }
+      });
+    }
 
     function setEloDisplay(valueEl, deltaEl, rating, delta) {
       if (valueEl) {
@@ -942,6 +986,46 @@
     function setLobbyHelp(text) {
       if (multi.lobbyHelpEl) {
         multi.lobbyHelpEl.textContent = text || defaultLobbyHelpText;
+      }
+    }
+
+    function updateReadyState(payload) {
+      if (!multi.waitingForStart && !multi.isReady) {
+        return;
+      }
+      if (!payload) return;
+      if (multi.roomId && payload.room_id && payload.room_id !== multi.roomId) return;
+      const readyMap = payload.ready || {};
+      const youKey = payload.you || pseudo;
+      multi.isReady = !!readyMap[youKey];
+      const others = Object.keys(readyMap).filter(name => name !== youKey);
+      multi.opponentReady = others.some(name => readyMap[name]);
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.remove('hidden');
+      }
+      if (multi.readyBtn) {
+        multi.readyBtn.disabled = false;
+        multi.readyBtn.classList.toggle('is-ready', multi.isReady);
+        multi.readyBtn.textContent = multi.isReady ? '✅ Prêt' : '▶️ Lancer la partie';
+      }
+      if (multi.readyStatusEl) {
+        const opponentName = multi.opponent || others[0] || 'Adversaire';
+        let message = multi.isReady
+          ? 'Tu es prêt.'
+          : 'Appuie sur « Lancer la partie » pour te déclarer prêt.';
+        if (others.length) {
+          message += multi.opponentReady
+            ? ` ${opponentName} est prêt aussi.`
+            : ` ${opponentName} n'est pas encore prêt.`;
+        }
+        multi.readyStatusEl.textContent = message;
+      }
+      if (multi.gameStatusEl) {
+        if (multi.isReady && multi.opponentReady) {
+          multi.gameStatusEl.textContent = 'Lancement imminent…';
+        } else {
+          multi.gameStatusEl.textContent = 'En attente que les deux joueurs soient prêts…';
+        }
       }
     }
 
@@ -1250,6 +1334,23 @@
       multi.lobby.classList.remove('hidden');
       multi.leaveBtn.disabled = true;
       multi.gameStatusEl.textContent = '';
+      multi.waitingForStart = false;
+      multi.isReady = false;
+      multi.opponentReady = false;
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.add('hidden');
+      }
+      if (multi.readyBtn) {
+        multi.readyBtn.disabled = false;
+        multi.readyBtn.classList.remove('is-ready', 'rematch');
+        multi.readyBtn.textContent = '▶️ Lancer la partie';
+      }
+      if (multi.readyStatusEl) {
+        multi.readyStatusEl.textContent = defaultReadyStatusText;
+      }
+      if (multi.postGameEl) {
+        multi.postGameEl.classList.add('hidden');
+      }
       setEloDisplay(multi.eloEl, multi.eloDeltaEl, '-', null);
       setEloDisplay(multi.opponentEloEl, multi.opponentEloDeltaEl, '-', null);
       if (multi.yourRoomEl) {
@@ -1325,12 +1426,24 @@
     function startMultiGame(speedSchedule) {
       multi.game.classList.remove('hidden');
       multi.lobby.classList.add('hidden');
+      multi.inMatch = true;
+      multi.waitingForStart = false;
+      multi.reportedGameOver = false;
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.add('hidden');
+      }
+      if (multi.postGameEl) {
+        multi.postGameEl.classList.add('hidden');
+      }
+      if (multi.readyBtn) {
+        multi.readyBtn.disabled = true;
+        multi.readyBtn.classList.remove('rematch', 'is-ready');
+      }
       multi.scoreEl.textContent = '0';
       multi.linesEl.textContent = '0';
       multi.opponentScoreEl.textContent = '0';
       multi.opponentLinesEl.textContent = '0';
       multi.gameStatusEl.textContent = 'La partie commence !';
-      multi.reportedGameOver = false;
       multi.gameInstance = new TetrisGame({
         canvas: multi.boardCanvas,
         previewContainer: multi.nextContainer,
@@ -1350,6 +1463,16 @@
     function scheduleMatchStart(data) {
       if (!data) return;
       const startDelay = Number(data.start_in) || 0;
+      multi.waitingForStart = false;
+      multi.isReady = false;
+      multi.opponentReady = false;
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.add('hidden');
+      }
+      if (multi.readyBtn) {
+        multi.readyBtn.disabled = true;
+        multi.readyBtn.classList.remove('is-ready');
+      }
       if (multi.startTimeout) {
         clearTimeout(multi.startTimeout);
         multi.startTimeout = null;
@@ -1395,7 +1518,7 @@
     }
 
     multi.leaveBtn.addEventListener('click', () => {
-      if (!multi.inMatch) return;
+      if (!multi.inMatch && !multi.waitingForStart) return;
       multi.leaveBtn.disabled = true;
       if (multi.gameInstance) {
         multi.gameInstance.stop();
@@ -1425,7 +1548,10 @@
 
     socket.on('tetris_match_found', (data) => {
       if (!data) return;
-      multi.inMatch = true;
+      multi.inMatch = false;
+      multi.waitingForStart = true;
+      multi.isReady = false;
+      multi.opponentReady = false;
       multi.roomId = data.room_id;
       multi.opponent = data.opponent || 'Adversaire';
       multi.opponentNameEl.textContent = multi.opponent;
@@ -1444,13 +1570,37 @@
       setEloDisplay(multi.opponentEloEl, multi.opponentEloDeltaEl, data.opponent_elo, null);
       multi.lobby.classList.add('hidden');
       multi.game.classList.remove('hidden');
+      if (multi.postGameEl) {
+        multi.postGameEl.classList.add('hidden');
+      }
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.remove('hidden');
+      }
+      if (multi.readyBtn) {
+        multi.readyBtn.disabled = false;
+        multi.readyBtn.classList.remove('is-ready', 'rematch');
+        multi.readyBtn.textContent = '▶️ Lancer la partie';
+      }
+      if (multi.readyStatusEl) {
+        multi.readyStatusEl.textContent = defaultReadyStatusText;
+      }
+      multi.leaveBtn.disabled = false;
       renderBoardToCanvas(multi.opponentCanvas, createMatrix(20, 10));
-      multi.gameStatusEl.textContent = 'Préparation de la partie…';
+      multi.gameStatusEl.textContent = 'Appuie sur « Lancer la partie » quand tu es prêt.';
+    });
+
+    socket.on('tetris_ready_state', (data) => {
+      updateReadyState(data);
+    });
+
+    socket.on('tetris_match_start', (data) => {
+      if (!data) return;
+      if (multi.roomId && data.room_id && data.room_id !== multi.roomId) return;
       scheduleMatchStart(data);
     });
 
     socket.on('tetris_add_pieces', (data) => {
-      if (!multi.inMatch || !data) return;
+      if ((!multi.inMatch && !multi.waitingForStart) || !data) return;
       if (multi.roomId && data.room_id && data.room_id !== multi.roomId) return;
       if (Array.isArray(data.pieces) && data.pieces.length) {
         multi.pieceQueue.push(...data.pieces);
@@ -1525,12 +1675,29 @@
         setEloDisplay(multi.opponentEloEl, multi.opponentEloDeltaEl, data.opponent_elo, data.opponent_elo_delta);
       }
       const summary = `Score final : ${multi.scoreEl.textContent} - ${multi.opponentScoreEl.textContent}.`;
-      resetMultiState(`${message} ${summary}`.trim());
+      multi.inMatch = false;
+      multi.waitingForStart = false;
+      multi.isReady = false;
+      multi.opponentReady = false;
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.add('hidden');
+      }
+      multi.leaveBtn.disabled = true;
+      multi.gameStatusEl.textContent = message;
+      if (multi.postGameEl) {
+        multi.postGameEl.classList.remove('hidden');
+      }
+      if (multi.postGameMessageEl) {
+        multi.postGameMessageEl.textContent = message;
+      }
+      if (multi.postGameSummaryEl) {
+        multi.postGameSummaryEl.textContent = summary;
+      }
     });
 
     socket.on('tetris_error', (data) => {
       if (!data || !data.message) return;
-      const target = multi.inMatch ? multi.gameStatusEl : multi.lobbyMessageEl;
+      const target = (multi.inMatch || multi.waitingForStart) ? multi.gameStatusEl : multi.lobbyMessageEl;
       if (target) {
         target.textContent = `Erreur : ${data.message}`;
       }
@@ -1541,7 +1708,7 @@
     });
 
     window.addEventListener('beforeunload', () => {
-      if (multi.inMatch) {
+      if (multi.inMatch || multi.waitingForStart) {
         socket.emit('tetris_leave_match');
       }
     });

@@ -1149,6 +1149,44 @@ def _tetris_finish_room(room_id, *, winner=None, loser=None, reason="top_out", d
     tetris_rooms.pop(room_id, None)
 
 
+def _tetris_emit_ready_state(room):
+    if not room:
+        return
+    ready_map = room.setdefault("ready", {})
+    payload_ready = {name: bool(ready_map.get(name)) for name in room.get("players", {})}
+    for pseudo, info in room.get("players", {}).items():
+        sid = info.get("sid")
+        if not sid:
+            continue
+        socketio.emit(
+            "tetris_ready_state",
+            {"room_id": room.get("id"), "ready": payload_ready, "you": pseudo},
+            room=sid,
+        )
+
+
+def _tetris_begin_countdown(room):
+    if not room:
+        return
+    status = room.get("status")
+    if status not in {"waiting", "countdown"}:
+        return
+    room["status"] = "active"
+    room["start_time"] = time.time() + (TETRIS_START_DELAY_MS / 1000.0)
+    payload = {
+        "room_id": room.get("id"),
+        "start_in": TETRIS_START_DELAY_MS,
+        "speed_schedule": room.get("speed_schedule", []),
+    }
+    for info in room.get("players", {}).values():
+        sid = info.get("sid")
+        if sid:
+            socketio.emit("tetris_match_start", payload, room=sid)
+    ready_map = room.setdefault("ready", {})
+    for name in list(ready_map.keys()):
+        ready_map[name] = False
+
+
 def _tetris_start_match(player_a, player_b, room_id=None):
     room_id = room_id or uuid.uuid4().hex[:8]
     rating_a = player_a.get("elo") or get_tetris_elo(player_a["pseudo"])
@@ -1174,9 +1212,13 @@ def _tetris_start_match(player_a, player_b, room_id=None):
             player_b["pseudo"]: True,
         },
         "created": time.time(),
-        "start_time": time.time() + (TETRIS_START_DELAY_MS / 1000.0),
+        "start_time": None,
         "speed_schedule": list(TETRIS_SPEED_SCHEDULE),
-        "status": "pending",
+        "status": "waiting",
+        "ready": {
+            player_a["pseudo"]: False,
+            player_b["pseudo"]: False,
+        },
     }
     room["boards"] = {}
     tetris_rooms[room_id] = room
@@ -1193,7 +1235,6 @@ def _tetris_start_match(player_a, player_b, room_id=None):
                 "room_id": room_id,
                 "opponent": opponent["pseudo"],
                 "pieces": list(initial_pieces),
-                "start_in": TETRIS_START_DELAY_MS,
                 "speed_schedule": room["speed_schedule"],
                 "your_elo": current.get("elo", get_tetris_elo(current["pseudo"])),
                 "opponent_elo": opponent.get("elo", get_tetris_elo(opponent["pseudo"])),
@@ -1206,7 +1247,7 @@ def _tetris_start_match(player_a, player_b, room_id=None):
             room=current["sid"],
         )
 
-    room["status"] = "active"
+    _tetris_emit_ready_state(room)
 
 
 def _tetris_cleanup_sid(sid, *, disconnect=False, pseudo=None):
@@ -2228,6 +2269,7 @@ def tetris_join_room(data):
                 tetris_sid_to_room[sid] = room_id
                 tetris_player_active_room[pseudo] = room_id
                 emit('tetris_queue_status', {'status': 'matched', 'room_id': room_id}, room=sid)
+                _tetris_emit_ready_state(room)
             else:
                 emit('tetris_error', {'message': 'room_not_found'})
             return
@@ -2280,6 +2322,34 @@ def tetris_join_room(data):
                         },
                         room=other_sid,
                     )
+
+
+@socketio.on('tetris_set_ready')
+def tetris_set_ready(data):
+    sid = request.sid
+    pseudo = connected_users.get(sid)
+    if not pseudo:
+        return
+    desired = False
+    if isinstance(data, dict) and 'ready' in data:
+        desired = bool(data.get('ready'))
+    with tetris_lock:
+        room_id, room = _tetris_room_from_sid(sid)
+        if not room_id or not room:
+            emit('tetris_error', {'message': 'not_in_room'})
+            return
+        status = room.get('status')
+        if status not in {'waiting', 'countdown', 'active'}:
+            emit('tetris_error', {'message': 'invalid_state'})
+            return
+        if status not in {'waiting', 'countdown'}:
+            return
+        room.setdefault('ready', {})[pseudo] = desired
+        _tetris_emit_ready_state(room)
+        if room.get('status') == 'waiting' and all(
+            room['ready'].get(name) for name in room.get('players', {})
+        ):
+            _tetris_begin_countdown(room)
 
 
 @socketio.on('tetris_leave_match')
@@ -2398,10 +2468,29 @@ def tetris_game_over(data):
                 },
                 room=opponent_sid,
             )
-        winner = opponent_name if opponent_name else None
-        loser = pseudo if winner else None
-        draw = winner is None
-        _tetris_finish_room(room_id, winner=winner, loser=loser, reason=reason, draw=draw)
+        all_finished = all(not alive for alive in room.get('alive', {}).values())
+        if not all_finished:
+            return
+        players = list(room.get('players', {}).keys())
+        scores = room.get('scores', {})
+        winner = None
+        loser = None
+        draw = False
+        if len(players) >= 2:
+            ordered = sorted(players, key=lambda name: scores.get(name, 0), reverse=True)
+            best = ordered[0]
+            second = ordered[1]
+            best_score = scores.get(best, 0)
+            second_score = scores.get(second, 0)
+            if best_score == second_score:
+                draw = True
+            else:
+                winner = best
+                loser = second
+        else:
+            draw = True
+        final_reason = reason if reason in {'forfeit', 'disconnect'} else 'score'
+        _tetris_finish_room(room_id, winner=winner, loser=loser, reason=final_reason, draw=draw)
 
 @socketio.on("demande_video")
 def handle_demande_video(data):
