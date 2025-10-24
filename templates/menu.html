@@ -6,6 +6,7 @@
   <title>Neo Arcade Hub</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
+  <script src="{{ url_for('static', filename='js/audio-manager.js') }}" defer></script>
   <style>
     body {
       perspective: 1200px;
@@ -144,7 +145,7 @@
         <button type="submit" class="neo-button secondary">Déconnexion</button>
       </form>
       <a class="neo-button secondary" href="{{ url_for('profile') }}">Profil</a>
-      <button class="hub-sound-toggle" type="button">🔊 Ambiance</button>
+      <button class="hub-sound-toggle" type="button" data-sound-toggle>🔊 Ambiance</button>
     </div>
   </header>
   <main id="hub">
@@ -261,6 +262,15 @@
             window.location.assign(link.href);
           }, 360);
         });
+      });
+    }
+
+    if (window.arcadeAudio) {
+      window.arcadeAudio.setScene('menu');
+      const interactive = document.querySelectorAll('.neo-button, .nav-item[href]');
+      interactive.forEach(element => {
+        element.addEventListener('mouseenter', () => window.arcadeAudio.playEffect('menuSelect'));
+        element.addEventListener('focus', () => window.arcadeAudio.playEffect('menuSelect'));
       });
     }
   </script>
