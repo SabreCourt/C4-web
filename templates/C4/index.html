@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Puissance 4 – Neon Grid Arena</title>
+  <title>Puissance 4</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
 </head>
@@ -13,10 +13,9 @@
     <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
     <div class="game-header__meta">
       <h1>Puissance 4</h1>
-      <p>Neon Grid Arena</p>
-    </div>
-    <div class="game-header__actions">
-      <button type="button" class="neo-button primary" id="new-game-top">Nouvelle partie</button>
+      <p>Affronte l'IA ou un joueur en ligne.</p>
+  </div>
+  <div class="game-header__actions">
       <a class="neo-button secondary" data-portal-link href="{{ url_for('lobby') }}">Lobby</a>
     </div>
   </header>
@@ -35,7 +34,7 @@
         <input type="hidden" id="pseudo" value="{{ pseudo|e }}" />
         <div id="grille" class="grille"></div>
         <div class="helper-text">
-          <p>Alignez vos jetons lumineux et déclenchez le combo synthwave ultime.</p>
+          <p>Alignez vos jetons pour remporter la partie.</p>
         </div>
       </article>
 
@@ -83,13 +82,6 @@
         }, 320);
       });
     });
-
-    const topNewGameButton = document.getElementById('new-game-top');
-    if (topNewGameButton) {
-      topNewGameButton.addEventListener('click', () => {
-        initialiserJeu();
-      });
-    }
 
     let grille, tourJoueur, jeuFini;
     let pseudo = "";

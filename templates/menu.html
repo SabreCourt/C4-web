@@ -152,8 +152,7 @@
       <div class="hub-hero__headline">
         <h1>Neo Arcade Hub</h1>
         <p class="hub-hero__intro">
-          Plongez dans une salle d'arcade virtuelle où chaque jeu possède sa propre atmosphère. Des néons synthwave aux textures
-          tactiles, choisissez votre univers et lancez une nouvelle partie en un clic.
+          Choisissez un jeu, retrouvez vos scores et lancez une nouvelle partie en solo ou en multijoueur.
         </p>
       </div>
       <div class="hub-hero__cta">
@@ -167,10 +166,10 @@
         <article class="game-card neo-card game-theme--puissance4">
           <div class="game-card__art"></div>
           <div class="game-card__content">
-            <span class="game-card__badge">NEON GRID</span>
+            <span class="game-card__badge">STRATÉGIE</span>
             <h2 class="game-card__title">Puissance 4</h2>
             <p class="game-card__description">
-              Grille 3D immersive, pions lumineux et ambiance synthwave. Affrontez l'IA ou un ami dans un duel vibrant.
+              Alignez quatre jetons pour gagner face à l'IA ou à un autre joueur.
             </p>
             <div class="game-card__footer">
               <form method="GET" action="{{ url_for('lobby') }}">
@@ -183,10 +182,10 @@
         <article class="game-card neo-card game-theme--pendu">
           <div class="game-card__art"></div>
           <div class="game-card__content">
-            <span class="game-card__badge">PAPIER &amp; PIXEL</span>
+            <span class="game-card__badge">MOTS</span>
             <h2 class="game-card__title">Pendu</h2>
             <p class="game-card__description">
-              Papier texturé et pixels lumineux. Tapez, effacez, découvrez le mot avant que la silhouette ne se dessine.
+              Devine le mot en un nombre limité d'essais pour faire grimper ta série.
             </p>
             <div class="game-card__footer">
               <form method="GET" action="{{ url_for('pendu') }}">
@@ -201,10 +200,10 @@
         <article class="game-card neo-card game-theme--tetris">
           <div class="game-card__art"></div>
           <div class="game-card__content">
-            <span class="game-card__badge">DIGITAL BLOCKS</span>
+            <span class="game-card__badge">ARCADE</span>
             <h2 class="game-card__title">Tetris</h2>
             <p class="game-card__description">
-              Blocs lumineux en apesanteur, ambiance cyberpunk douce, modes solo ou duel en ligne.
+              Assemble les pièces pour effacer des lignes en solo ou en duel en ligne.
             </p>
             <div class="game-card__footer">
               <form method="GET" action="{{ url_for('tetris') }}">
@@ -217,10 +216,10 @@
         <article class="game-card neo-card game-theme--echecs">
           <div class="game-card__art"></div>
           <div class="game-card__content">
-            <span class="game-card__badge">ROYAL MINIMAL</span>
+            <span class="game-card__badge">STRATÉGIE</span>
             <h2 class="game-card__title">Échecs</h2>
             <p class="game-card__description">
-              Damier élégant, pièces dorées, interface minimaliste. Préparez-vous à l'ouverture du portail royal.
+              Prépare tes ouvertures et surveille le lancement de ce mode de jeu.
             </p>
             <div class="game-card__footer">
               <button type="button" class="neo-button secondary" disabled>Prochainement</button>
@@ -237,7 +236,7 @@
         <a href="{{ url_for('forgot_password') }}">Réinitialiser le mot de passe</a>
         <a href="mailto:support@example.com">Support</a>
       </div>
-      <small>Transitions 3D, glassmorphism léger et néons subtils pour une immersion totale.</small>
+      <small>Bon jeu et à bientôt pour de nouveaux défis.</small>
     </footer>
   </main>
 

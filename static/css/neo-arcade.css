@@ -490,7 +490,7 @@ body.theme-tetris {
 }
 
 /* ------------------------------------------------------------
-   Puissance 4 — Neon Grid Arena
+   Puissance 4
 ------------------------------------------------------------- */
 
 .page-c4 .wrapper {
@@ -728,6 +728,107 @@ body.theme-tetris {
   cursor: pointer;
 }
 
+.page-c4 .lobby-shell {
+  display: grid;
+  gap: clamp(20px, 3vw, 32px);
+}
+
+.page-c4 .lobby-greeting {
+  padding: clamp(24px, 3vw, 32px);
+  display: grid;
+  gap: 10px;
+}
+
+.page-c4 .lobby-greeting h2 {
+  margin: 0;
+}
+
+.page-c4 .lobby-grid {
+  display: grid;
+  gap: clamp(18px, 2.6vw, 24px);
+}
+
+@media (min-width: 820px) {
+  .page-c4 .lobby-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+}
+
+.page-c4 .lobby-card {
+  padding: clamp(24px, 3vw, 32px);
+  gap: clamp(16px, 2.4vw, 20px);
+}
+
+.page-c4 .lobby-card__body {
+  display: grid;
+  gap: 8px;
+}
+
+.page-c4 .lobby-card__body h2 {
+  margin: 0;
+}
+
+.page-c4 .lobby-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.page-c4 .lobby-card__actions form {
+  margin: 0;
+}
+
+.page-c4 .lobby-card__message {
+  margin: 0;
+  min-height: 1.2em;
+  color: var(--color-orange);
+  font-weight: 600;
+}
+
+.page-c4 .lobby-back {
+  justify-self: start;
+}
+
+.page-c4 .room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(16px, 2.4vw, 22px);
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+}
+
+.page-c4 .room-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.page-c4 .room-details {
+  display: grid;
+  gap: 2px;
+}
+
+.page-c4 .room-details strong {
+  font-size: 1rem;
+}
+
+.page-c4 .room-meta {
+  color: rgba(248, 250, 252, 0.75);
+  font-size: 0.9rem;
+}
+
+.page-c4 .room-empty {
+  text-align: center;
+  color: rgba(248, 250, 252, 0.65);
+  padding: 18px 0;
+}
+
 @media (max-width: 720px) {
   .page-c4 #grille {
     grid-template-columns: repeat(7, minmax(44px, 1fr));
@@ -735,7 +836,7 @@ body.theme-tetris {
 }
 
 /* ------------------------------------------------------------
-   Pendu — Papier & Pixel
+   Pendu
 ------------------------------------------------------------- */
 
 .page-pendu .game-wrapper {
@@ -958,6 +1059,150 @@ body.theme-tetris {
   }
   75% {
     transform: translateX(6px);
+  } 
+}
+
+/* ------------------------------------------------------------
+   Profil
+------------------------------------------------------------- */
+
+.page-profile .profile-main {
+  width: min(1080px, 92vw);
+  margin: clamp(32px, 6vh, 72px) auto;
+  display: grid;
+  gap: clamp(24px, 3vw, 32px);
+}
+
+.page-profile .profile-overview,
+.page-profile .profile-settings {
+  display: grid;
+  gap: clamp(18px, 2.4vw, 24px);
+  padding: clamp(26px, 3vw, 34px);
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.82), rgba(17, 24, 39, 0.72));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.page-profile .profile-overview__header {
+  display: grid;
+  gap: 6px;
+}
+
+.page-profile .profile-overview__header h2 {
+  margin: 0;
+}
+
+.page-profile .profile-alert {
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(248, 250, 252, 0.9);
+}
+
+.page-profile .profile-alert.success {
+  background: rgba(74, 222, 128, 0.18);
+  color: #4ade80;
+}
+
+.page-profile .profile-alert.error {
+  background: rgba(248, 113, 113, 0.18);
+  color: #f87171;
+}
+
+.page-profile .profile-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(16px, 2.6vw, 24px);
+}
+
+.page-profile .profile-stat {
+  display: grid;
+  gap: 6px;
+  padding: clamp(18px, 2.4vw, 22px);
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.page-profile .profile-stat__label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(248, 250, 252, 0.72);
+}
+
+.page-profile .profile-stat__value {
+  font-size: clamp(1.8rem, 3vw, 2.2rem);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.page-profile .profile-stat__detail {
+  font-size: 0.95rem;
+  color: var(--color-muted);
+}
+
+.page-profile .profile-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.page-profile .profile-settings h2 {
+  margin: 0;
+}
+
+.page-profile .profile-settings__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(18px, 2.6vw, 24px);
+}
+
+.page-profile .profile-form {
+  display: grid;
+  gap: 14px;
+  padding: clamp(18px, 2.4vw, 22px);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.page-profile .profile-form h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.page-profile .profile-field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: rgba(248, 250, 252, 0.82);
+}
+
+.page-profile .profile-field input {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.75);
+  color: var(--color-text);
+}
+
+.page-profile .profile-field input:focus {
+  outline: 2px solid rgba(56, 189, 248, 0.45);
+  outline-offset: 2px;
+}
+
+.page-profile .profile-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .page-profile .profile-actions {
+    justify-content: flex-start;
   }
 }
 
@@ -982,7 +1227,7 @@ body.theme-tetris {
 }
 
 /* ------------------------------------------------------------
-   Tetris — Digital Blocks
+   Tetris
 ------------------------------------------------------------- */
 
 .page-tetris .tetris-wrapper {
