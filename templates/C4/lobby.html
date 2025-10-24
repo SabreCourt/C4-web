@@ -4,109 +4,91 @@
   <meta charset="UTF-8" />
   <title>Lobby – Puissance 4</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: #f0f4f8;
-      margin: 0;
-    }
-
-    .container {
-      text-align: center;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
-      border-radius: 16px;
-      padding: 40px;
-      box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
-      animation: fadeIn 0.6s ease;
-      width: 90%;
-      max-width: 420px;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(15px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 1.5rem;
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .btn {
-      display: block;
-      width: 100%;
-      padding: 14px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 8px;
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      color: #031427;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s ease, opacity 0.2s ease;
-      font-size: 1rem;
-    }
-
-    .btn:hover {
-      transform: translateY(-2px);
-      opacity: 0.9;
-    }
-
-    .btn:disabled {
-      background: rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.4);
-      cursor: not-allowed;
-    }
-
-    .back-btn {
-      display: inline-block;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 10px;
-      text-decoration: none;
-      color: #1b2735;
-      font-weight: 600;
-      font-size: 1rem;
-      background: linear-gradient(90deg, #ff5f6d, #ffc371);
-      box-shadow: 0 8px 20px rgba(255, 95, 109, 0.25);
-      cursor: pointer;
-      transition: all 0.25s ease;
-    }
-
-    .back-btn:hover {
-      transform: translateY(-3px);
-      opacity: 0.9;
-      box-shadow: 0 10px 24px rgba(255, 95, 109, 0.35);
-    }
-
-  </style>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
 </head>
-<body>
-  <div class="container">
-    <h1>Bienvenue {{ pseudo }}</h1>
-    <form method="GET" action="/jeu">
-      <button type="submit" class="btn">🎮 Jouer contre l'IA</button>
-    </form>
-    <form method="GET" action="/lobby_multi">
-      <button type="submit" class="btn">🕹️ Jouer en ligne</button>
-    </form>
+<body class="neo-arcade-page page-c4 theme-puissance4">
+  <div class="portal-transition" id="portal"></div>
 
-    {% if pseudo.lower() == 'admin' %}
-    <form method="GET" action="/admin">
-      <button type="submit" class="btn" style="background:linear-gradient(90deg,#00ffc6,#00baff);font-weight:600;">👑 Panneau Admin</button>
-    </form>
-    {% endif %}
+  <header class="game-header neo-glass">
+    <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
+    <div class="game-header__meta">
+      <h1>Puissance 4</h1>
+      <p>Choisis ton mode de jeu.</p>
+    </div>
+    <div class="game-header__actions">
+      <a class="neo-button secondary" data-portal-link href="{{ url_for('profile') }}">Profil</a>
+    </div>
+  </header>
 
-    <a class="back-btn" href="/menu">⬅️ Retour au menu</a>
-  </div>
+  <main class="game-main">
+    <section class="lobby-shell">
+      <div class="lobby-greeting neo-card">
+        <h2>Salut {{ pseudo }}</h2>
+        <p>Affronte l'ordinateur ou rejoins une partie en ligne.</p>
+      </div>
+
+      <div class="lobby-grid">
+        <article class="neo-card lobby-card">
+          <div class="lobby-card__body">
+            <h2>Partie contre l'IA</h2>
+            <p>Lance une partie rapide et mesure-toi à l'ordinateur.</p>
+          </div>
+          <div class="lobby-card__actions">
+            <form method="GET" action="{{ url_for('jeu') }}">
+              <button type="submit" class="neo-button primary">Jouer maintenant</button>
+            </form>
+          </div>
+        </article>
+
+        <article class="neo-card lobby-card">
+          <div class="lobby-card__body">
+            <h2>Multijoueur</h2>
+            <p>Rejoins une salle publique ou crée ton propre duel.</p>
+          </div>
+          <div class="lobby-card__actions">
+            <form method="GET" action="{{ url_for('lobby_multi') }}">
+              <button type="submit" class="neo-button secondary">Accéder aux salles</button>
+            </form>
+          </div>
+        </article>
+
+        {% if pseudo.lower() == 'admin' %}
+        <article class="neo-card lobby-card">
+          <div class="lobby-card__body">
+            <h2>Espace administrateur</h2>
+            <p>Gère les spectateurs et les parties en cours.</p>
+          </div>
+          <div class="lobby-card__actions">
+            <form method="GET" action="{{ url_for('admin') }}">
+              <button type="submit" class="neo-button tertiary">Ouvrir le panneau</button>
+            </form>
+          </div>
+        </article>
+        {% endif %}
+      </div>
+
+      <a class="neo-button tertiary lobby-back" data-portal-link href="{{ url_for('menu') }}">⬅️ Retour au hub</a>
+    </section>
+  </main>
+
+  <script>
+    const portal = document.getElementById('portal');
+    document.querySelectorAll('[data-portal-link]').forEach(link => {
+      link.addEventListener('click', event => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+          return;
+        }
+        if (!portal) {
+          return;
+        }
+        event.preventDefault();
+        portal.classList.add('is-active');
+        setTimeout(() => {
+          window.location.assign(link.href);
+        }, 320);
+      });
+    });
+  </script>
 </body>
 </html>

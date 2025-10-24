@@ -4,253 +4,121 @@
   <meta charset="UTF-8" />
   <title>Profil de {{ pseudo }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    :root {
-      color-scheme: dark;
-    }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 32px 20px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
-      color: #f0f4f8;
-    }
-    .profile {
-      width: min(720px, 100%);
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 20px;
-      padding: 36px 40px;
-      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.45);
-      backdrop-filter: blur(12px);
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-      animation: fadeIn 0.5s ease;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(16px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    h1 {
-      margin: 0;
-      font-size: 2.1rem;
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .intro {
-      margin: 0;
-      color: rgba(240, 244, 248, 0.78);
-      line-height: 1.6;
-    }
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 18px;
-    }
-    .stat-card {
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 16px;
-      padding: 20px 22px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
-    }
-    .stat-card .label {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: rgba(240, 244, 248, 0.65);
-    }
-    .stat-card .value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #f0f4f8;
-    }
-    .stat-card .detail {
-      font-size: 0.95rem;
-      color: rgba(240, 244, 248, 0.78);
-    }
-    .actions {
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .alert {
-      padding: 14px 18px;
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.08);
-      font-size: 0.95rem;
-      color: rgba(240, 244, 248, 0.9);
-    }
-    .alert.success {
-      background: rgba(74, 222, 128, 0.15);
-      color: #4ade80;
-    }
-    .alert.error {
-      background: rgba(248, 113, 113, 0.15);
-      color: #f87171;
-    }
-    .settings {
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 18px;
-      padding: 24px 28px;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-    .settings h2 {
-      margin: 0;
-      font-size: 1.4rem;
-    }
-    .settings-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 18px;
-    }
-    .settings form {
-      background: rgba(0, 0, 0, 0.28);
-      border-radius: 14px;
-      padding: 18px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.35);
-    }
-    .settings label {
-      font-size: 0.9rem;
-      color: rgba(240, 244, 248, 0.78);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .settings input {
-      border: none;
-      border-radius: 10px;
-      padding: 10px 12px;
-      background: rgba(255, 255, 255, 0.12);
-      color: #f0f4f8;
-    }
-    .settings input:focus {
-      outline: 2px solid rgba(30, 144, 255, 0.55);
-    }
-    .form-actions {
-      display: flex;
-      justify-content: flex-end;
-    }
-    .form-actions .btn {
-      width: auto;
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 12px 24px;
-      border-radius: 999px;
-      text-decoration: none;
-      font-weight: 600;
-      background: rgba(255, 255, 255, 0.12);
-      color: #f0f4f8;
-      transition: transform 0.2s ease, opacity 0.2s ease;
-    }
-    .btn:hover {
-      transform: translateY(-1px);
-      opacity: 0.9;
-    }
-    @media (max-width: 640px) {
-      .profile {
-        padding: 28px;
-        gap: 22px;
-      }
-      h1 {
-        font-size: 1.8rem;
-      }
-      .stat-card .value {
-        font-size: 1.7rem;
-      }
-      .settings {
-        padding: 20px;
-      }
-    }
-  </style>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
 </head>
-<body>
-  <div class="profile">
-    <h1>Profil de {{ pseudo }}</h1>
-    <p class="intro">Retrouve ici un aperçu de tes performances sur les différents modes de jeu.</p>
-    {% if profile_status and profile_status.get('message') %}
-    <div class="alert {{ profile_status.get('category', '') }}">{{ profile_status.get('message') }}</div>
-    {% endif %}
-    <div class="stat-grid">
-      <div class="stat-card">
-        <span class="label">Meilleure série de victoires – Pendu</span>
-        <span class="value">{{ best_pendu_streak }}</span>
-        <span class="detail">Série en cours : {{ current_pendu_streak }}</span>
-      </div>
-      <div class="stat-card">
-        <span class="label">Score contre l'IA – Puissance 4</span>
-        <span class="value">{{ c4_ai_wins }} - {{ c4_ai_losses }}</span>
-        <span class="detail">{{ c4_ai_wins }} victoire{{ 's' if c4_ai_wins != 1 else '' }}, {{ c4_ai_losses }} défaite{{ 's' if c4_ai_losses != 1 else '' }}</span>
-      </div>
-      <div class="stat-card">
-        <span class="label">Elo en ligne – Puissance 4</span>
-        <span class="value">{{ c4_online_elo }}</span>
-        <span class="detail">Les duels 1v1 font évoluer ton classement</span>
-      </div>
-      <div class="stat-card">
-        <span class="label">Elo en ligne – Tetris</span>
-        <span class="value">{{ tetris_online_elo }}</span>
-        <span class="detail">Les duels 1v1 font évoluer ton classement</span>
-      </div>
-      <div class="stat-card">
-        <span class="label">Meilleur score – Tetris</span>
-        <span class="value">{{ tetris_high_score }}</span>
-        <span class="detail">Mode solo classique</span>
-      </div>
+<body class="neo-arcade-page page-profile">
+  <div class="portal-transition" id="portal"></div>
+
+  <header class="game-header neo-glass">
+    <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
+    <div class="game-header__meta">
+      <h1>Profil</h1>
+      <p>{{ pseudo }}</p>
     </div>
-    <div class="actions">
-      <a href="{{ url_for('menu') }}" class="btn">⬅️ Retour au menu</a>
+    <div class="game-header__actions">
+      <form method="POST" action="{{ url_for('logout') }}">
+        <button type="submit" class="neo-button tertiary">Déconnexion</button>
+      </form>
     </div>
-    <section id="settings" class="settings">
+  </header>
+
+  <main class="profile-main">
+    <section class="neo-card profile-overview">
+      <div class="profile-overview__header">
+        <h2>Statistiques</h2>
+        <p>Récapitulatif de tes performances récentes.</p>
+      </div>
+      {% if profile_status and profile_status.get('message') %}
+      <div class="profile-alert {{ profile_status.get('category', '') }}">{{ profile_status.get('message') }}</div>
+      {% endif %}
+      <div class="profile-stat-grid">
+        <article class="profile-stat">
+          <span class="profile-stat__label">Meilleure série – Pendu</span>
+          <span class="profile-stat__value">{{ best_pendu_streak }}</span>
+          <span class="profile-stat__detail">Série en cours : {{ current_pendu_streak }}</span>
+        </article>
+        <article class="profile-stat">
+          <span class="profile-stat__label">Score vs IA – Puissance 4</span>
+          <span class="profile-stat__value">{{ c4_ai_wins }} - {{ c4_ai_losses }}</span>
+          <span class="profile-stat__detail">{{ c4_ai_wins }} victoire{{ 's' if c4_ai_wins != 1 else '' }}, {{ c4_ai_losses }} défaite{{ 's' if c4_ai_losses != 1 else '' }}</span>
+        </article>
+        <article class="profile-stat">
+          <span class="profile-stat__label">Elo en ligne – Puissance 4</span>
+          <span class="profile-stat__value">{{ c4_online_elo }}</span>
+          <span class="profile-stat__detail">Les duels 1v1 font évoluer ton classement.</span>
+        </article>
+        <article class="profile-stat">
+          <span class="profile-stat__label">Elo en ligne – Tetris</span>
+          <span class="profile-stat__value">{{ tetris_online_elo }}</span>
+          <span class="profile-stat__detail">Les duels 1v1 font évoluer ton classement.</span>
+        </article>
+        <article class="profile-stat">
+          <span class="profile-stat__label">Meilleur score – Tetris</span>
+          <span class="profile-stat__value">{{ tetris_high_score }}</span>
+          <span class="profile-stat__detail">Mode solo classique.</span>
+        </article>
+      </div>
+      <div class="profile-actions">
+        <a class="neo-button secondary" data-portal-link href="{{ url_for('menu') }}">Retour au hub</a>
+      </div>
+    </section>
+
+    <section class="neo-card profile-settings">
       <h2>Paramètres du compte</h2>
-      <div class="settings-grid">
-        <form method="post" action="{{ url_for('profile_settings') }}">
+      <div class="profile-settings__grid">
+        <form method="post" action="{{ url_for('profile_settings') }}" class="profile-form">
+          <h3>Modifier le pseudo</h3>
           <input type="hidden" name="action" value="change_pseudo" />
-          <label>
+          <label class="profile-field">
             Nouveau pseudo
             <input type="text" name="new_pseudo" placeholder="Ton nouveau pseudo" required />
           </label>
-          <div class="form-actions">
-            <button type="submit" class="btn secondary">Mettre à jour</button>
+          <div class="profile-form__actions">
+            <button type="submit" class="neo-button primary">Mettre à jour</button>
           </div>
         </form>
-        <form method="post" action="{{ url_for('profile_settings') }}">
+
+        <form method="post" action="{{ url_for('profile_settings') }}" class="profile-form">
+          <h3>Modifier le mot de passe</h3>
           <input type="hidden" name="action" value="change_password" />
-          <label>
+          <label class="profile-field">
             Mot de passe actuel
             <input type="password" name="current_password" required />
           </label>
-          <label>
+          <label class="profile-field">
             Nouveau mot de passe
             <input type="password" name="new_password" required />
           </label>
-          <label>
+          <label class="profile-field">
             Confirmer le nouveau mot de passe
             <input type="password" name="confirm_password" required />
           </label>
-          <div class="form-actions">
-            <button type="submit" class="btn secondary">Modifier le mot de passe</button>
+          <div class="profile-form__actions">
+            <button type="submit" class="neo-button secondary">Modifier le mot de passe</button>
           </div>
         </form>
       </div>
     </section>
-  </div>
+  </main>
+
+  <script>
+    const portal = document.getElementById('portal');
+    document.querySelectorAll('[data-portal-link]').forEach(link => {
+      link.addEventListener('click', event => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+          return;
+        }
+        if (!portal) {
+          return;
+        }
+        event.preventDefault();
+        portal.classList.add('is-active');
+        setTimeout(() => {
+          window.location.assign(link.href);
+        }, 320);
+      });
+    });
+  </script>
 </body>
 </html>

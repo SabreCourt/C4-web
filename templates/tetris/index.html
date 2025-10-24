@@ -5,627 +5,211 @@
   <title>Tetris – Modes solo et duel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" integrity="sha384-KA7m0DwgQGmeRC6Xre3hJO+ZxpanOauVh4Czdqbg8lDKJ3bZZYVYmP+y4F31x40L" crossorigin="anonymous"></script>
-  <style>
-    :root {
-      color-scheme: dark;
-    }
-    * {
-      box-sizing: border-box;
-    }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 28px 16px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: radial-gradient(circle at 25% 25%, #1b2735, #090a0f 75%);
-      color: #f0f4f8;
-    }
-    .tetris-wrapper {
-      width: min(1100px, 100%);
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 20px;
-      padding: clamp(20px, 4vw, 36px);
-      box-shadow: 0 20px 44px rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(12px);
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-      animation: fadeIn 0.5s ease;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(24px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    header h1 {
-      margin: 0;
-      font-size: clamp(1.8rem, 4vw, 2.4rem);
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    header .subtitle {
-      margin: 0;
-      color: rgba(240, 244, 248, 0.72);
-      font-size: 0.95rem;
-    }
-    .mode-bar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-top: 8px;
-    }
-
-    .mode-switch {
-      display: inline-flex;
-      background: rgba(255, 255, 255, 0.08);
-      padding: 6px;
-      border-radius: 999px;
-      gap: 6px;
-      align-self: flex-start;
-    }
-    .mode-switch button {
-      border: none;
-      border-radius: 999px;
-      padding: 10px 18px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      cursor: pointer;
-      color: rgba(240, 244, 248, 0.8);
-      background: transparent;
-      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
-    }
-    .mode-switch button.active {
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      color: #031427;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(30, 144, 255, 0.35);
-    }
-    .mode-panel {
-      display: none;
-      flex-direction: column;
-      gap: 20px;
-    }
-    .mode-panel.active {
-      display: flex;
-    }
-    .solo-layout,
-    .multi-layout {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 24px;
-      align-items: flex-start;
-    }
-    .board-card {
-      background: rgba(0, 0, 0, 0.32);
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.5);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
-    canvas.game-board {
-      border-radius: 12px;
-      background: rgba(7, 18, 32, 0.9);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
-    }
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      flex: 1 1 240px;
-      min-width: 220px;
-    }
-    .stat-card {
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 14px;
-      padding: 14px 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      box-shadow: 0 12px 22px rgba(0, 0, 0, 0.35);
-    }
-    .stat-card h3 {
-      margin: 0;
-      font-size: 0.95rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: rgba(240, 244, 248, 0.7);
-    }
-    .stat-card h4 {
-      margin: 0;
-      font-size: 0.95rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: rgba(240, 244, 248, 0.7);
-    }
-    .stat-card .stat-value {
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #f0f4f8;
-    }
-    .stat-card .stat-sub {
-      font-size: 0.9rem;
-      color: rgba(240, 244, 248, 0.75);
-    }
-    .next-wrapper {
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 14px;
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .next-wrapper h3,
-    .next-wrapper h4 {
-      margin: 0;
-      font-size: 0.95rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: rgba(240, 244, 248, 0.7);
-    }
-    .next-pieces {
-      display: grid;
-      gap: 6px;
-    }
-    .preview-piece {
-      --cell-size: 14px;
-      display: inline-grid;
-      grid-template-rows: repeat(var(--rows), var(--cell-size));
-      grid-template-columns: repeat(var(--cols), var(--cell-size));
-      background: rgba(7, 18, 32, 0.75);
-      padding: 6px;
-      border-radius: 10px;
-      gap: 2px;
-      justify-content: center;
-      align-content: center;
-    }
-    .preview-cell {
-      width: var(--cell-size);
-      height: var(--cell-size);
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.08);
-    }
-    .preview-cell.filled {
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
-    }
-    .controls {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 14px;
-      padding: 16px 18px;
-      font-size: 0.95rem;
-      color: rgba(240, 244, 248, 0.78);
-      line-height: 1.6;
-    }
-    .btn {
-      border: none;
-      border-radius: 12px;
-      padding: 12px 20px;
-      font-weight: 600;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: transform 0.2s ease, opacity 0.2s ease;
-      color: #031427;
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      box-shadow: 0 12px 26px rgba(30, 144, 255, 0.35);
-    }
-    .btn:hover {
-      transform: translateY(-1px);
-      opacity: 0.95;
-    }
-    .btn:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-      transform: none;
-    }
-    .btn.secondary {
-      background: rgba(255, 255, 255, 0.12);
-      color: rgba(240, 244, 248, 0.9);
-      box-shadow: none;
-    }
-    .btn.danger {
-      background: linear-gradient(90deg, #ff5f6d, #ffc371);
-      color: #1b2735;
-      box-shadow: 0 12px 26px rgba(255, 95, 109, 0.35);
-    }
-    .back-btn {
-      display: inline-block;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 10px;
-      text-decoration: none;
-      color: #1b2735;
-      font-weight: 600;
-      font-size: 1rem;
-      background: linear-gradient(90deg, #ff5f6d, #ffc371);
-      box-shadow: 0 8px 20px rgba(255, 95, 109, 0.25);
-      cursor: pointer;
-      transition: all 0.25s ease;
-    }
-
-    .back-btn:hover {
-      transform: translateY(-3px);
-      opacity: 0.9;
-      box-shadow: 0 10px 24px rgba(255, 95, 109, 0.35);
-    }
-    .status-message {
-      margin: 0;
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 600;
-      color: #0b1220;
-      background: linear-gradient(135deg, rgba(148, 163, 184, 0.85), rgba(203, 213, 225, 0.85));
-      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.45);
-      border: 1px solid rgba(148, 163, 184, 0.65);
-    }
-
-    .status-message:empty {
-      display: none;
-    }
-
-    .mode-bar .status-message {
-      flex: 1 1 260px;
-      text-align: center;
-    }
-    .multi-lobby,
-    .multi-game {
-      width: 100%;
-    }
-    .lobby-card {
-      background: rgba(0, 0, 0, 0.32);
-      border-radius: 18px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.45);
-    }
-    .lobby-card h3 {
-      margin: 0;
-      font-size: 1.3rem;
-    }
-    .lobby-card .subtitle {
-      margin: 0;
-      color: rgba(240, 244, 248, 0.75);
-      font-size: 0.95rem;
-    }
-    .lobby-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .lobby-message {
-      min-height: 24px;
-      font-size: 0.95rem;
-      color: rgba(240, 244, 248, 0.8);
-    }
-    .room-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .room-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 16px;
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.06);
-      gap: 16px;
-    }
-    .room-item strong {
-      font-size: 1rem;
-    }
-    .room-meta {
-      color: rgba(240, 244, 248, 0.7);
-      font-size: 0.85rem;
-    }
-    .room-empty {
-      text-align: center;
-      color: rgba(240, 244, 248, 0.6);
-      padding: 18px 0;
-      font-size: 0.95rem;
-    }
-    .your-room {
-      background: rgba(30, 144, 255, 0.12);
-      border-radius: 14px;
-      padding: 16px 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .your-room-title {
-      font-weight: 600;
-      font-size: 1rem;
-      margin: 0;
-    }
-    .your-room-status {
-      margin: 0;
-      color: rgba(240, 244, 248, 0.78);
-      font-size: 0.95rem;
-    }
-    .your-room-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .duel-stage {
-      display: grid;
-      grid-template-columns: minmax(160px, 0.6fr) minmax(340px, 1.5fr) minmax(220px, 0.9fr);
-      gap: 20px;
-      align-items: start;
-    }
-    .spectator-panel,
-    .player-sidebar {
-      background: rgba(0, 0, 0, 0.32);
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.45);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .spectator-panel h3 {
-      margin: 0;
-      font-size: 1.15rem;
-    }
-    .spectator-panel canvas.game-board {
-      width: 100%;
-      height: auto;
-      max-width: 160px;
-    }
-    .player-stage {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-      width: 100%;
-    }
-    .hero-board {
-      width: 100%;
-      display: flex;
-      justify-content: center;
-    }
-    .hero-board canvas.game-board {
-      width: 100%;
-      height: auto;
-      max-width: clamp(300px, 32vw, 360px);
-    }
-    .duel-scoreboard {
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 14px;
-      padding: 14px 16px;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-    .duel-scoreboard .stat-card {
-      align-items: center;
-      text-align: center;
-    }
-    .duel-scoreboard h4 {
-      margin: 0;
-      font-size: 0.95rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: rgba(240, 244, 248, 0.7);
-    }
-    .duel-scoreboard .stat-value {
-      font-size: 1.45rem;
-      font-weight: 700;
-      color: #f0f4f8;
-    }
-    .duel-scoreboard .stat-sub {
-      font-size: 0.9rem;
-      color: rgba(240, 244, 248, 0.75);
-    }
-    .duel-scoreboard .stat-elo {
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-      font-size: 0.95rem;
-      color: rgba(240, 244, 248, 0.78);
-      justify-content: center;
-    }
-    .multi-status {
-      font-size: 1rem;
-      min-height: 24px;
-      text-align: center;
-      color: rgba(240, 244, 248, 0.85);
-    }
-    .elo-delta {
-      font-size: 0.85rem;
-      font-weight: 600;
-    }
-    .elo-delta.positive {
-      color: #4ade80;
-    }
-    .elo-delta.negative {
-      color: #f87171;
-    }
-    .elo-delta.neutral {
-      color: rgba(240, 244, 248, 0.75);
-    }
-    .player-sidebar {
-      gap: 20px;
-    }
-    .player-sidebar .btn {
-      width: 100%;
-      justify-content: center;
-    }
-    .hidden {
-      display: none !important;
-    }
-    @media (max-width: 960px) {
-      .solo-layout,
-      .multi-layout {
-        flex-direction: column;
-      }
-      .duel-stage {
-        grid-template-columns: 1fr;
-      }
-      .spectator-panel,
-      .player-sidebar {
-        width: 100%;
-      }
-      .spectator-panel canvas.game-board {
-        max-width: 150px;
-        margin: 0 auto;
-      }
-      .hero-board canvas.game-board {
-        max-width: 240px;
-      }
-      .duel-scoreboard {
-        grid-template-columns: 1fr;
-      }
-    }
-    @media (max-width: 640px) {
-      body {
-        padding: 20px 12px;
-      }
-      .tetris-wrapper {
-        padding: 20px 18px;
-      }
-      .lobby-actions,
-      .your-room-actions {
-        flex-direction: column;
-      }
-    }
-  </style>
 </head>
-<body>
-  <div class="tetris-wrapper">
-    <header>
-      <div>
-        <h1>Tetris</h1>
-        <p class="subtitle">Bonjour {{ pseudo }} — choisis un mode de jeu et améliore ton score.</p>
-      </div>
-      <a href="{{ url_for('menu') }}" class="back-btn">⬅️ Retour au menu</a>
-    </header>
-
-    <div class="mode-bar">
-      <div class="mode-switch">
-        <button type="button" class="active" data-mode="solo">🎯 Solo classique</button>
-        <button type="button" data-mode="multi">⚔️ Duel 1v1</button>
-      </div>
-      <p id="solo-status" class="status-message" aria-live="polite"></p>
+<body class="neo-arcade-page page-tetris theme-tetris">
+  <div class="portal-transition" id="portal"></div>
+  <header class="game-header neo-glass">
+    <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
+    <div class="game-header__meta">
+      <h1>Tetris</h1>
+      <p>Empile les pièces et maîtrise le rythme.</p>
     </div>
+    <div class="game-header__actions">
+      <button type="button" class="neo-button primary" id="header-new-game">Nouvelle partie</button>
+      <a class="neo-button secondary" data-portal-link href="{{ url_for('profile') }}">Profil</a>
+    </div>
+  </header>
 
-    <section id="mode-solo" class="mode-panel active">
-      <div class="solo-layout">
-        <div class="board-card">
-          <canvas id="solo-board" class="game-board" width="240" height="480"></canvas>
+  <main class="game-main">
+    <div class="tetris-wrapper">
+      <div class="tetris-hero">
+        <div>
+          <h1>Tetris</h1>
+          <p class="subtitle">Bonjour {{ pseudo }} — choisis un mode de jeu et améliore ton score.</p>
         </div>
-        <div class="sidebar">
-          <div class="stat-card">
-            <h3>Score actuel</h3>
-            <span class="stat-value" id="solo-score">0</span>
-          </div>
-          <div class="stat-card">
-            <h3>Lignes complétées</h3>
-            <span class="stat-value" id="solo-lines">0</span>
-          </div>
-          <div class="stat-card">
-            <h3>Record personnel</h3>
-            <span class="stat-value" id="solo-best">{{ best_score }}</span>
-            <span class="stat-sub" id="solo-best-sub">Dernière mise à jour automatique.</span>
-          </div>
-          <div class="next-wrapper">
-            <h3>Prochaines pièces</h3>
-            <div id="solo-next" class="next-pieces"></div>
-          </div>
-          <button id="solo-start" class="btn">▶️ Lancer une partie</button>
-        </div>
+        <a class="neo-button tertiary back-link" data-portal-link href="{{ url_for('menu') }}">⬅️ Retour au hub</a>
       </div>
-      <div class="controls">
-        <strong>Commandes :</strong> flèches gauche/droite pour se déplacer, flèche bas pour accélérer la chute, flèche haut ou X pour tourner, Z pour pivoter dans l'autre sens et espace pour un drop instantané.
-      </div>
-    </section>
 
-    <section id="mode-multi" class="mode-panel">
-      <div class="multi-layout">
-        <div id="multi-lobby" class="multi-lobby">
-          <div class="lobby-card">
-            <h3>Lobby en ligne</h3>
-            <p class="subtitle">Rejoins une salle disponible ou crée ton propre duel.</p>
-            <div class="lobby-actions">
-              <button id="multi-create" class="btn">➕ Créer une salle</button>
-              <button id="multi-refresh" class="btn secondary">🔄 Actualiser</button>
+      <div class="mode-bar">
+        <div class="mode-switch">
+          <button type="button" class="active" data-mode="solo">🎯 Solo classique</button>
+          <button type="button" data-mode="multi">⚔️ Duel 1v1</button>
+        </div>
+        <p id="solo-status" class="status-message" aria-live="polite"></p>
+      </div>
+
+      <section id="mode-solo" class="mode-panel active">
+        <div class="solo-layout">
+          <div class="board-card">
+            <canvas id="solo-board" class="game-board" width="240" height="480"></canvas>
+          </div>
+          <div class="sidebar">
+            <div class="stat-card">
+              <h3>Score actuel</h3>
+              <span class="stat-value" id="solo-score">0</span>
             </div>
-            <div id="multi-lobby-message" class="lobby-message"></div>
-            <div id="multi-your-room" class="your-room hidden">
-              <p class="your-room-title" id="multi-your-room-title">Ta salle</p>
-              <p class="your-room-status" id="multi-your-room-status"></p>
-              <div class="your-room-actions">
-                <button id="multi-leave-room" class="btn secondary">Quitter la salle</button>
-              </div>
+            <div class="stat-card">
+              <h3>Lignes complétées</h3>
+              <span class="stat-value" id="solo-lines">0</span>
             </div>
-            <div id="multi-rooms" class="room-list"></div>
+            <div class="stat-card">
+              <h3>Record personnel</h3>
+              <span class="stat-value" id="solo-best">{{ best_score }}</span>
+              <span class="stat-sub" id="solo-best-sub">Dernière mise à jour automatique.</span>
+            </div>
+            <div class="next-wrapper">
+              <h3>Prochaines pièces</h3>
+              <div id="solo-next" class="next-pieces"></div>
+            </div>
+            <button id="solo-start" class="btn neo-button primary">▶️ Lancer une partie</button>
           </div>
         </div>
-        <div id="multi-game" class="multi-game hidden">
-          <div class="duel-stage">
-            <aside class="spectator-panel">
-              <h3 id="multi-opponent-name">Adversaire</h3>
-              <canvas id="multi-opponent-board" class="game-board" width="160" height="320"></canvas>
-            </aside>
-            <div class="player-stage">
-              <div class="board-card hero-board">
-                <canvas id="multi-board" class="game-board" width="240" height="480"></canvas>
-              </div>
-              <p id="multi-game-status" class="multi-status"></p>
-            </div>
-            <aside class="player-sidebar">
-              <div class="next-wrapper">
-                <h4>Vos prochaines pièces</h4>
-                <div id="multi-next" class="next-pieces"></div>
-              </div>
-              <button id="multi-leave" class="btn danger" disabled>🏳️ Abandonner</button>
-              <div class="duel-scoreboard">
-                <div class="stat-card">
-                  <h4>Score adverse</h4>
-                  <span class="stat-value" id="multi-opponent-score">0</span>
-                  <span class="stat-sub">Lignes : <span id="multi-opponent-lines">0</span></span>
-                  <div class="stat-elo">
-                    <span>Elo :</span>
-                    <span id="multi-opponent-elo">-</span>
-                    <span class="elo-delta" id="multi-opponent-elo-delta"></span>
-                  </div>
+        <div class="controls">
+          <strong>Commandes :</strong>
+          <p class="control-copy" data-device="desktop">Clavier : flèches gauche/droite pour déplacer la pièce, flèche bas pour accélérer la chute, flèche haut ou X pour la faire pivoter, Z pour pivoter dans l'autre sens et espace pour un drop instantané.</p>
+          <p class="control-copy hidden" data-device="touch">Mobile : touche l'aire de jeu pour faire pivoter la pièce. Glisse vers la gauche ou la droite pour te déplacer, glisse vers le bas pour accélérer et réalise deux glissements rapides vers le bas pour un drop instantané.</p>
+        </div>
+      </section>
+
+      <section id="mode-multi" class="mode-panel">
+        <div class="multi-layout">
+          <div id="multi-lobby" class="multi-lobby">
+            <div class="lobby-card">
+              <div class="lobby-header">
+                <div>
+                  <h3>Lobby en ligne</h3>
+                  <p class="subtitle">Rejoins une salle disponible ou crée ton duel.</p>
                 </div>
-                <div class="stat-card">
-                  <h4>Votre score</h4>
-                  <span class="stat-value" id="multi-score">0</span>
-                  <span class="stat-sub">Lignes : <span id="multi-lines">0</span></span>
-                  <div class="stat-elo">
-                    <span>Elo :</span>
-                    <span id="multi-elo">-</span>
-                    <span class="elo-delta" id="multi-elo-delta"></span>
-                  </div>
+                <div class="lobby-actions">
+                  <button id="multi-create" class="btn neo-button primary">➕ Créer une salle</button>
+                  <button id="multi-refresh" class="btn neo-button secondary">🔄 Actualiser</button>
                 </div>
               </div>
-            </aside>
+              <div id="multi-lobby-message" class="lobby-message" aria-live="polite"></div>
+              <p id="multi-lobby-help" class="lobby-help">Sélectionne une salle ouverte ou crée la tienne pour inviter un adversaire.</p>
+              <div id="multi-your-room" class="your-room hidden" aria-live="polite">
+                <p class="your-room-title" id="multi-your-room-title">Ta salle</p>
+                <div class="your-room__code">
+                  <span class="your-room__code-label">Code</span>
+                  <span class="your-room__code-value" id="multi-your-room-code">—</span>
+                </div>
+                <p class="your-room__status" id="multi-your-room-status"></p>
+                <p class="your-room__hint" id="multi-your-room-hint">Partage le code avec ton adversaire ou attends qu'il rejoigne la salle.</p>
+                <div class="your-room-actions">
+                  <button id="multi-leave-room" class="btn neo-button secondary">Quitter la salle</button>
+                </div>
+              </div>
+              <h4>Salles disponibles</h4>
+              <div id="multi-rooms" class="room-list" aria-live="polite"></div>
+            </div>
+          </div>
+          <div id="multi-game" class="multi-game hidden">
+            <div class="duel-stage">
+              <aside class="spectator-panel">
+                <h3 id="multi-opponent-name">Adversaire</h3>
+                <canvas id="multi-opponent-board" class="game-board" width="160" height="320"></canvas>
+              </aside>
+              <div class="player-stage">
+                <div class="board-card hero-board">
+                  <canvas id="multi-board" class="game-board" width="240" height="480"></canvas>
+                </div>
+                <div id="multi-ready-panel" class="ready-panel hidden" aria-live="polite">
+                  <button id="multi-ready" class="btn neo-button primary">▶️ Lancer la partie</button>
+                  <p id="multi-ready-status" class="ready-status">Les deux joueurs doivent appuyer sur « Lancer la partie ».</p>
+                </div>
+                <p id="multi-game-status" class="multi-status"></p>
+                <div id="multi-post-game" class="multi-post-game hidden" aria-live="polite">
+                  <h3 id="multi-result-message">Partie terminée</h3>
+                  <p id="multi-result-summary" class="post-game-summary"></p>
+                  <div class="post-game-actions">
+                    <button id="multi-postgame-new" class="btn neo-button primary rematch">Nouvelle partie</button>
+                  </div>
+                </div>
+              </div>
+              <aside class="player-sidebar">
+                <div class="next-wrapper">
+                  <h4>Vos prochaines pièces</h4>
+                  <div id="multi-next" class="next-pieces"></div>
+                </div>
+                <button id="multi-leave" class="btn neo-button danger" disabled>🏳️ Abandonner</button>
+                <div class="duel-scoreboard">
+                  <div class="stat-card">
+                    <h4>Score adverse</h4>
+                    <span class="stat-value" id="multi-opponent-score">0</span>
+                    <span class="stat-sub">Lignes : <span id="multi-opponent-lines">0</span></span>
+                    <div class="stat-elo">
+                      <span>Elo :</span>
+                      <span id="multi-opponent-elo">-</span>
+                      <span class="elo-delta" id="multi-opponent-elo-delta"></span>
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <h4>Votre score</h4>
+                    <span class="stat-value" id="multi-score">0</span>
+                    <span class="stat-sub">Lignes : <span id="multi-lines">0</span></span>
+                    <div class="stat-elo">
+                      <span>Elo :</span>
+                      <span id="multi-elo">-</span>
+                      <span class="elo-delta" id="multi-elo-delta"></span>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
-  </div>
+        <div class="controls multi-controls">
+          <strong>Commandes :</strong>
+          <p class="control-copy" data-device="desktop" data-controls="multi">Clavier : flèches gauche/droite pour déplacer ta pièce, flèche bas pour accélérer, flèche haut ou X pour pivoter, Z pour pivoter dans l'autre sens et espace pour un drop instantané.</p>
+          <p class="control-copy hidden" data-device="touch" data-controls="multi">Mobile : tape dans l'aire de jeu pour faire pivoter la pièce. Glisse vers la gauche ou la droite pour te déplacer, glisse vers le bas pour accélérer et effectue deux glissements rapides vers le bas pour un drop instantané.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+<script>
+    const portal = document.getElementById('portal');
+    document.querySelectorAll('[data-portal-link]').forEach(link => {
+      link.addEventListener('click', event => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+          return;
+        }
+        if (!portal) {
+          return;
+        }
+        event.preventDefault();
+        portal.classList.add('is-active');
+        setTimeout(() => {
+          window.location.assign(link.href);
+        }, 320);
+      });
+    });
 
-  <script>
+    const headerNewGameButton = document.getElementById('header-new-game');
+    if (headerNewGameButton) {
+      headerNewGameButton.addEventListener('click', () => {
+        const activeMode = document.querySelector('.mode-switch button.active');
+        const mode = activeMode ? activeMode.dataset.mode : 'solo';
+        if (mode === 'solo') {
+          if (typeof startSoloGame === 'function') {
+            startSoloGame();
+          }
+        } else {
+          const multiSection = document.getElementById('mode-multi');
+          if (multiSection) {
+            multiSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          const createBtn = document.getElementById('multi-create');
+          if (createBtn) {
+            createBtn.classList.add('is-pulsing');
+            createBtn.focus();
+            setTimeout(() => createBtn.classList.remove('is-pulsing'), 1200);
+          }
+        }
+      });
+    }
+
     const pseudo = {{ pseudo|tojson }};
     const initialBestScore = {{ best_score|tojson }};
 
@@ -1060,6 +644,29 @@
       }
     }
 
+    const coarsePointerQuery = window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
+    function prefersTouch() {
+      const hasCoarsePointer = !!(coarsePointerQuery && coarsePointerQuery.matches);
+      const hasMaxTouchPoints = typeof navigator !== 'undefined' && 'maxTouchPoints' in navigator && navigator.maxTouchPoints > 0;
+      return hasCoarsePointer || hasMaxTouchPoints || 'ontouchstart' in window;
+    }
+
+    function updateControlGuides() {
+      const showTouch = prefersTouch();
+      document.querySelectorAll('.control-copy[data-device="desktop"]').forEach((el) => {
+        el.classList.toggle('hidden', showTouch);
+      });
+      document.querySelectorAll('.control-copy[data-device="touch"]').forEach((el) => {
+        el.classList.toggle('hidden', !showTouch);
+      });
+    }
+
+    if (coarsePointerQuery && typeof coarsePointerQuery.addEventListener === 'function') {
+      coarsePointerQuery.addEventListener('change', updateControlGuides);
+    }
+
+    updateControlGuides();
+
     let activeGame = null;
     window.addEventListener('keydown', (event) => {
       if (!activeGame || !activeGame.isRunning()) return;
@@ -1081,6 +688,56 @@
         activeGame.hardDrop();
       }
     });
+
+    function setupTouchControls(canvas) {
+      if (!canvas) return;
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let lastDownSwipeTime = 0;
+      const swipeThreshold = 24;
+      canvas.addEventListener('touchstart', (event) => {
+        if (!activeGame || !activeGame.isRunning()) return;
+        if (event.touches.length > 1) return;
+        const touch = event.changedTouches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        event.preventDefault();
+      }, { passive: false });
+
+      canvas.addEventListener('touchmove', (event) => {
+        if (!activeGame || !activeGame.isRunning()) return;
+        if (event.touches.length > 1) return;
+        event.preventDefault();
+      }, { passive: false });
+
+      canvas.addEventListener('touchend', (event) => {
+        if (!activeGame || !activeGame.isRunning()) return;
+        if (event.changedTouches.length !== 1) return;
+        const touch = event.changedTouches[0];
+        const dx = touch.clientX - touchStartX;
+        const dy = touch.clientY - touchStartY;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        const now = event.timeStamp;
+        if (absDx < swipeThreshold && absDy < swipeThreshold) {
+          activeGame.rotate(1);
+        } else if (absDx > absDy && absDx >= swipeThreshold) {
+          if (dx > 0) {
+            activeGame.move(1, 0);
+          } else {
+            activeGame.move(-1, 0);
+          }
+        } else if (dy > 0 && absDy >= swipeThreshold) {
+          if (now - lastDownSwipeTime < 280) {
+            activeGame.hardDrop();
+          } else {
+            activeGame.drop(false);
+          }
+          lastDownSwipeTime = now;
+        }
+        event.preventDefault();
+      }, { passive: false });
+    }
 
     const modeButtons = document.querySelectorAll('.mode-switch button');
     const soloPanel = document.getElementById('mode-solo');
@@ -1118,6 +775,8 @@
 
     solo.bestEl.textContent = solo.bestScore;
     solo.statusEl.textContent = 'Appuie sur « Lancer une partie » pour commencer.';
+
+    setupTouchControls(solo.canvas);
 
     async function refreshSoloBest() {
       try {
@@ -1215,10 +874,13 @@
       createBtn: document.getElementById('multi-create'),
       refreshBtn: document.getElementById('multi-refresh'),
       lobbyMessageEl: document.getElementById('multi-lobby-message'),
+      lobbyHelpEl: document.getElementById('multi-lobby-help'),
       roomsEl: document.getElementById('multi-rooms'),
       yourRoomEl: document.getElementById('multi-your-room'),
       yourRoomTitleEl: document.getElementById('multi-your-room-title'),
       yourRoomStatusEl: document.getElementById('multi-your-room-status'),
+      roomCodeEl: document.getElementById('multi-your-room-code'),
+      roomHintEl: document.getElementById('multi-your-room-hint'),
       leaveRoomBtn: document.getElementById('multi-leave-room'),
       leaveBtn: document.getElementById('multi-leave'),
       boardCanvas: document.getElementById('multi-board'),
@@ -1230,11 +892,19 @@
       opponentLinesEl: document.getElementById('multi-opponent-lines'),
       opponentNameEl: document.getElementById('multi-opponent-name'),
       gameStatusEl: document.getElementById('multi-game-status'),
+      readyPanel: document.getElementById('multi-ready-panel'),
+      readyBtn: document.getElementById('multi-ready'),
+      readyStatusEl: document.getElementById('multi-ready-status'),
+      postGameEl: document.getElementById('multi-post-game'),
+      postGameMessageEl: document.getElementById('multi-result-message'),
+      postGameSummaryEl: document.getElementById('multi-result-summary'),
+      postGameNewBtn: document.getElementById('multi-postgame-new'),
       eloEl: document.getElementById('multi-elo'),
       eloDeltaEl: document.getElementById('multi-elo-delta'),
       opponentEloEl: document.getElementById('multi-opponent-elo'),
       opponentEloDeltaEl: document.getElementById('multi-opponent-elo-delta'),
       inMatch: false,
+      waitingForStart: false,
       roomId: null,
       opponent: null,
       pieceQueue: [],
@@ -1246,7 +916,38 @@
       currentLobbyRoomId: null,
       joinedRoomId: null,
       lobbyPolling: null,
+      isReady: false,
+      opponentReady: false,
     };
+
+    const defaultLobbyHelpText = multi.lobbyHelpEl ? multi.lobbyHelpEl.textContent : '';
+    const defaultRoomHintText = multi.roomHintEl ? multi.roomHintEl.textContent : '';
+    const joinerRoomHintText = 'Reste dans la salle jusqu’au lancement de la partie.';
+    const defaultReadyStatusText = multi.readyStatusEl
+      ? multi.readyStatusEl.textContent
+      : 'Les deux joueurs doivent appuyer sur « Lancer la partie ».';
+
+    setupTouchControls(multi.boardCanvas);
+
+    if (multi.readyBtn) {
+      multi.readyBtn.addEventListener('click', () => {
+        if (!multi.roomId || (!multi.waitingForStart && !multi.isReady)) {
+          return;
+        }
+        const nextReady = !multi.isReady;
+        multi.readyBtn.disabled = true;
+        socket.emit('tetris_set_ready', { room_id: multi.roomId, ready: nextReady });
+      });
+    }
+
+    if (multi.postGameNewBtn) {
+      multi.postGameNewBtn.addEventListener('click', () => {
+        resetMultiState('Choisis une salle pour relancer un duel.');
+        if (multi.createBtn) {
+          multi.createBtn.focus();
+        }
+      });
+    }
 
     function setEloDisplay(valueEl, deltaEl, rating, delta) {
       if (valueEl) {
@@ -1279,6 +980,64 @@
     function setYourRoomStatus(text) {
       if (multi.yourRoomStatusEl) {
         multi.yourRoomStatusEl.textContent = text || '';
+      }
+    }
+
+    function setLobbyHelp(text) {
+      if (multi.lobbyHelpEl) {
+        multi.lobbyHelpEl.textContent = text || defaultLobbyHelpText;
+      }
+    }
+
+    function updateReadyState(payload) {
+      if (!multi.waitingForStart && !multi.isReady) {
+        return;
+      }
+      if (!payload) return;
+      if (multi.roomId && payload.room_id && payload.room_id !== multi.roomId) return;
+      const readyMap = payload.ready || {};
+      const youKey = payload.you || pseudo;
+      multi.isReady = !!readyMap[youKey];
+      const others = Object.keys(readyMap).filter(name => name !== youKey);
+      multi.opponentReady = others.some(name => readyMap[name]);
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.remove('hidden');
+      }
+      if (multi.readyBtn) {
+        multi.readyBtn.disabled = false;
+        multi.readyBtn.classList.toggle('is-ready', multi.isReady);
+        multi.readyBtn.textContent = multi.isReady ? '✅ Prêt' : '▶️ Lancer la partie';
+      }
+      if (multi.readyStatusEl) {
+        const opponentName = multi.opponent || others[0] || 'Adversaire';
+        let message = multi.isReady
+          ? 'Tu es prêt.'
+          : 'Appuie sur « Lancer la partie » pour te déclarer prêt.';
+        if (others.length) {
+          message += multi.opponentReady
+            ? ` ${opponentName} est prêt aussi.`
+            : ` ${opponentName} n'est pas encore prêt.`;
+        }
+        multi.readyStatusEl.textContent = message;
+      }
+      if (multi.gameStatusEl) {
+        if (multi.isReady && multi.opponentReady) {
+          multi.gameStatusEl.textContent = 'Lancement imminent…';
+        } else {
+          multi.gameStatusEl.textContent = 'En attente que les deux joueurs soient prêts…';
+        }
+      }
+    }
+
+    function setYourRoomCode(roomId) {
+      if (multi.roomCodeEl) {
+        multi.roomCodeEl.textContent = roomId ? String(roomId) : '—';
+      }
+    }
+
+    function setYourRoomHint(text) {
+      if (multi.roomHintEl) {
+        multi.roomHintEl.textContent = text || defaultRoomHintText;
       }
     }
 
@@ -1341,6 +1100,10 @@
         if (multi.yourRoomEl) {
           multi.yourRoomEl.classList.add('hidden');
         }
+        setYourRoomCode(null);
+        setYourRoomStatus('');
+        setYourRoomHint(defaultRoomHintText);
+        setLobbyHelp(defaultLobbyHelpText);
       }
 
       const availableRooms = rooms.filter(room => room.status === 'waiting' && Array.isArray(room.players) && room.players.length === 1 && room.host !== pseudo);
@@ -1357,14 +1120,21 @@
       const players = Array.isArray(lobby.players) ? lobby.players : [];
       const opponent = players.find(name => name !== pseudo);
       const isHost = lobby.host === pseudo;
+      const roomId = lobby.id || multi.currentLobbyRoomId;
+      setYourRoomCode(roomId);
       if (multi.yourRoomTitleEl) {
         multi.yourRoomTitleEl.textContent = isHost ? "Tu es l'hôte de la salle" : `Salle de ${lobby.host || 'votre adversaire'}`;
       }
       if (opponent) {
         setYourRoomStatus(lobby.status === 'ready' ? `Adversaire trouvé : ${opponent}. Préparation en cours…` : `En attente que ${opponent} rejoigne la partie…`);
+        setYourRoomHint('La partie démarre automatiquement dès que tout le monde est prêt.');
       } else {
         setYourRoomStatus("En attente d'un adversaire…");
+        setYourRoomHint(isHost ? 'Partage le code pour inviter ton adversaire.' : joinerRoomHintText);
       }
+      setLobbyHelp(isHost
+        ? 'Ta salle est ouverte. Partage le code ou attends un adversaire.'
+        : `Tu as rejoint la salle de ${lobby.host || 'ton adversaire'}. Attends le lancement de la partie.`);
       if (multi.leaveRoomBtn) {
         multi.leaveRoomBtn.disabled = false;
       }
@@ -1381,9 +1151,10 @@
         const item = document.createElement('div');
         item.className = 'room-item';
         const details = document.createElement('div');
-        details.innerHTML = `<strong>${room.host}</strong><div class="room-meta">1/2 joueurs</div>`;
+        const codeMarkup = room.id ? `<div class="room-meta">Code : ${room.id} · 1/2 joueurs</div>` : '<div class="room-meta">1/2 joueurs</div>';
+        details.innerHTML = `<strong>${room.host}</strong>${codeMarkup}`;
         const joinButton = document.createElement('button');
-        joinButton.className = 'btn secondary';
+        joinButton.className = 'btn neo-button secondary';
         joinButton.textContent = 'Rejoindre';
         joinButton.addEventListener('click', () => joinLobbyRoomRequest(room.id));
         item.appendChild(details);
@@ -1413,16 +1184,24 @@
           if (payload && payload.error === 'already_in_room' && payload.room_id) {
             joinLobbyRoom(payload.room_id);
             if (multi.lobbyMessageEl) {
-              multi.lobbyMessageEl.textContent = 'Tu es déjà dans cette salle.';
+              multi.lobbyMessageEl.textContent = `Tu es déjà dans cette salle (code ${payload.room_id}).`;
             }
             return;
           }
           throw new Error('Impossible de rejoindre la salle.');
         }
+        const roomCode = payload.room_id || null;
         if (multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = 'Salle rejointe. Préparation…';
+          multi.lobbyMessageEl.textContent = roomCode
+            ? `Salle rejointe (code ${roomCode}). Préparation…`
+            : 'Salle rejointe. Préparation…';
         }
-        joinLobbyRoom(payload.room_id);
+        if (roomCode) {
+          setYourRoomCode(roomCode);
+        }
+        setYourRoomHint(joinerRoomHintText);
+        setLobbyHelp('Tu as rejoint la salle. Attends le lancement de la partie.');
+        joinLobbyRoom(roomCode);
         fetchTetrisRooms();
       } catch (error) {
         if (multi.lobbyMessageEl) {
@@ -1444,7 +1223,7 @@
           if (payload && payload.error === 'already_in_room' && payload.room_id) {
             joinLobbyRoom(payload.room_id);
             if (multi.lobbyMessageEl) {
-              multi.lobbyMessageEl.textContent = 'Tu es déjà dans une salle. Préparation…';
+              multi.lobbyMessageEl.textContent = `Tu es déjà dans une salle (code ${payload.room_id}). Préparation…`;
             }
             return;
           }
@@ -1454,10 +1233,18 @@
           }
           throw new Error('Impossible de créer une salle.');
         }
+        const roomCode = payload.room_id || null;
         if (multi.lobbyMessageEl) {
-          multi.lobbyMessageEl.textContent = "Salle créée. En attente d'un adversaire…";
+          multi.lobbyMessageEl.textContent = roomCode
+            ? `Salle créée (code ${roomCode}). En attente d'un adversaire…`
+            : "Salle créée. En attente d'un adversaire…";
         }
-        joinLobbyRoom(payload.room_id);
+        if (roomCode) {
+          setYourRoomCode(roomCode);
+        }
+        setLobbyHelp('Ta salle est ouverte. Partage le code ou attends un adversaire.');
+        setYourRoomHint('Partage le code pour inviter ton adversaire.');
+        joinLobbyRoom(roomCode);
         fetchTetrisRooms();
       } catch (error) {
         if (multi.lobbyMessageEl) {
@@ -1484,6 +1271,10 @@
         if (multi.yourRoomEl) {
           multi.yourRoomEl.classList.add('hidden');
         }
+        setYourRoomCode(null);
+        setYourRoomStatus('');
+        setYourRoomHint(defaultRoomHintText);
+        setLobbyHelp(defaultLobbyHelpText);
         if (multi.lobbyMessageEl) {
           multi.lobbyMessageEl.textContent = 'Salle quittée.';
         }
@@ -1543,11 +1334,32 @@
       multi.lobby.classList.remove('hidden');
       multi.leaveBtn.disabled = true;
       multi.gameStatusEl.textContent = '';
+      multi.waitingForStart = false;
+      multi.isReady = false;
+      multi.opponentReady = false;
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.add('hidden');
+      }
+      if (multi.readyBtn) {
+        multi.readyBtn.disabled = false;
+        multi.readyBtn.classList.remove('is-ready', 'rematch');
+        multi.readyBtn.textContent = '▶️ Lancer la partie';
+      }
+      if (multi.readyStatusEl) {
+        multi.readyStatusEl.textContent = defaultReadyStatusText;
+      }
+      if (multi.postGameEl) {
+        multi.postGameEl.classList.add('hidden');
+      }
       setEloDisplay(multi.eloEl, multi.eloDeltaEl, '-', null);
       setEloDisplay(multi.opponentEloEl, multi.opponentEloDeltaEl, '-', null);
       if (multi.yourRoomEl) {
         multi.yourRoomEl.classList.add('hidden');
       }
+      setYourRoomCode(null);
+      setYourRoomHint(defaultRoomHintText);
+      setYourRoomStatus('');
+      setLobbyHelp(defaultLobbyHelpText);
       multi.joinedRoomId = null;
       if (multi.lobbyMessageEl) {
         if (message) {
@@ -1614,12 +1426,24 @@
     function startMultiGame(speedSchedule) {
       multi.game.classList.remove('hidden');
       multi.lobby.classList.add('hidden');
+      multi.inMatch = true;
+      multi.waitingForStart = false;
+      multi.reportedGameOver = false;
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.add('hidden');
+      }
+      if (multi.postGameEl) {
+        multi.postGameEl.classList.add('hidden');
+      }
+      if (multi.readyBtn) {
+        multi.readyBtn.disabled = true;
+        multi.readyBtn.classList.remove('rematch', 'is-ready');
+      }
       multi.scoreEl.textContent = '0';
       multi.linesEl.textContent = '0';
       multi.opponentScoreEl.textContent = '0';
       multi.opponentLinesEl.textContent = '0';
       multi.gameStatusEl.textContent = 'La partie commence !';
-      multi.reportedGameOver = false;
       multi.gameInstance = new TetrisGame({
         canvas: multi.boardCanvas,
         previewContainer: multi.nextContainer,
@@ -1639,6 +1463,16 @@
     function scheduleMatchStart(data) {
       if (!data) return;
       const startDelay = Number(data.start_in) || 0;
+      multi.waitingForStart = false;
+      multi.isReady = false;
+      multi.opponentReady = false;
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.add('hidden');
+      }
+      if (multi.readyBtn) {
+        multi.readyBtn.disabled = true;
+        multi.readyBtn.classList.remove('is-ready');
+      }
       if (multi.startTimeout) {
         clearTimeout(multi.startTimeout);
         multi.startTimeout = null;
@@ -1684,7 +1518,7 @@
     }
 
     multi.leaveBtn.addEventListener('click', () => {
-      if (!multi.inMatch) return;
+      if (!multi.inMatch && !multi.waitingForStart) return;
       multi.leaveBtn.disabled = true;
       if (multi.gameInstance) {
         multi.gameInstance.stop();
@@ -1714,7 +1548,10 @@
 
     socket.on('tetris_match_found', (data) => {
       if (!data) return;
-      multi.inMatch = true;
+      multi.inMatch = false;
+      multi.waitingForStart = true;
+      multi.isReady = false;
+      multi.opponentReady = false;
       multi.roomId = data.room_id;
       multi.opponent = data.opponent || 'Adversaire';
       multi.opponentNameEl.textContent = multi.opponent;
@@ -1733,13 +1570,37 @@
       setEloDisplay(multi.opponentEloEl, multi.opponentEloDeltaEl, data.opponent_elo, null);
       multi.lobby.classList.add('hidden');
       multi.game.classList.remove('hidden');
+      if (multi.postGameEl) {
+        multi.postGameEl.classList.add('hidden');
+      }
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.remove('hidden');
+      }
+      if (multi.readyBtn) {
+        multi.readyBtn.disabled = false;
+        multi.readyBtn.classList.remove('is-ready', 'rematch');
+        multi.readyBtn.textContent = '▶️ Lancer la partie';
+      }
+      if (multi.readyStatusEl) {
+        multi.readyStatusEl.textContent = defaultReadyStatusText;
+      }
+      multi.leaveBtn.disabled = false;
       renderBoardToCanvas(multi.opponentCanvas, createMatrix(20, 10));
-      multi.gameStatusEl.textContent = 'Préparation de la partie…';
+      multi.gameStatusEl.textContent = 'Appuie sur « Lancer la partie » quand tu es prêt.';
+    });
+
+    socket.on('tetris_ready_state', (data) => {
+      updateReadyState(data);
+    });
+
+    socket.on('tetris_match_start', (data) => {
+      if (!data) return;
+      if (multi.roomId && data.room_id && data.room_id !== multi.roomId) return;
       scheduleMatchStart(data);
     });
 
     socket.on('tetris_add_pieces', (data) => {
-      if (!multi.inMatch || !data) return;
+      if ((!multi.inMatch && !multi.waitingForStart) || !data) return;
       if (multi.roomId && data.room_id && data.room_id !== multi.roomId) return;
       if (Array.isArray(data.pieces) && data.pieces.length) {
         multi.pieceQueue.push(...data.pieces);
@@ -1814,12 +1675,29 @@
         setEloDisplay(multi.opponentEloEl, multi.opponentEloDeltaEl, data.opponent_elo, data.opponent_elo_delta);
       }
       const summary = `Score final : ${multi.scoreEl.textContent} - ${multi.opponentScoreEl.textContent}.`;
-      resetMultiState(`${message} ${summary}`.trim());
+      multi.inMatch = false;
+      multi.waitingForStart = false;
+      multi.isReady = false;
+      multi.opponentReady = false;
+      if (multi.readyPanel) {
+        multi.readyPanel.classList.add('hidden');
+      }
+      multi.leaveBtn.disabled = true;
+      multi.gameStatusEl.textContent = message;
+      if (multi.postGameEl) {
+        multi.postGameEl.classList.remove('hidden');
+      }
+      if (multi.postGameMessageEl) {
+        multi.postGameMessageEl.textContent = message;
+      }
+      if (multi.postGameSummaryEl) {
+        multi.postGameSummaryEl.textContent = summary;
+      }
     });
 
     socket.on('tetris_error', (data) => {
       if (!data || !data.message) return;
-      const target = multi.inMatch ? multi.gameStatusEl : multi.lobbyMessageEl;
+      const target = (multi.inMatch || multi.waitingForStart) ? multi.gameStatusEl : multi.lobbyMessageEl;
       if (target) {
         target.textContent = `Erreur : ${data.message}`;
       }
@@ -1830,7 +1708,7 @@
     });
 
     window.addEventListener('beforeunload', () => {
-      if (multi.inMatch) {
+      if (multi.inMatch || multi.waitingForStart) {
         socket.emit('tetris_leave_match');
       }
     });
