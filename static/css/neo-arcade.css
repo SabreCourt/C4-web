@@ -1193,6 +1193,17 @@ body.theme-tetris {
   color: var(--color-muted);
 }
 
+.page-profile .profile-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .page-profile .profile-actions {
+    justify-content: center;
+  }
+}
+
 .page-profile .profile-settings h2 {
   margin: 0;
 }
