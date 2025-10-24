@@ -53,11 +53,11 @@
           </div>
         </article>
 
-        {% if pseudo.lower() == 'admin' %}
+        {% if pseudo|trim|lower == 'admin' %}
         <article class="neo-card lobby-card">
           <div class="lobby-card__body">
-            <h2>Espace administrateur</h2>
-            <p>Gère les spectateurs et les parties en cours.</p>
+            <h2>Panneau administrateur</h2>
+            <p>Accède aux outils de supervision et de gestion du jeu.</p>
           </div>
           <div class="lobby-card__actions">
             <form method="GET" action="{{ url_for('admin_panel') }}">
