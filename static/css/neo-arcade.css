@@ -768,6 +768,10 @@ body.theme-tetris {
 
 .page-c4 .lobby-card__body h2 {
   margin: 0;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  hyphens: auto;
+  word-break: break-word;
 }
 
 .page-c4 .lobby-card__actions {
@@ -847,6 +851,153 @@ body.theme-tetris {
     grid-template-columns: repeat(7, minmax(32px, 1fr));
     gap: 6px;
     padding: 10px;
+  }
+}
+
+.page-c4.admin-panel .admin-shell,
+.page-c4.spectator-view .spectator-shell {
+  display: grid;
+  gap: clamp(18px, 2.6vw, 28px);
+}
+
+.page-c4.admin-panel .admin-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.page-c4.admin-panel .admin-summary h2,
+.page-c4.admin-panel .admin-users__header h2,
+.page-c4.spectator-view .spectator-card h2 {
+  margin: 0;
+  text-transform: none;
+  letter-spacing: 0.06em;
+}
+
+.page-c4.admin-panel .admin-summary p,
+.page-c4.admin-panel .admin-users__header p,
+.page-c4.spectator-view .spectator-card p {
+  margin: 0;
+}
+
+.page-c4.admin-panel .admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.16);
+  border: 1px solid rgba(56, 189, 248, 0.38);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.page-c4.admin-panel .admin-users__card {
+  display: grid;
+  gap: 18px;
+}
+
+.page-c4.admin-panel .admin-users__header {
+  display: grid;
+  gap: 6px;
+}
+
+.page-c4.admin-panel .admin-users__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.page-c4.admin-panel .admin-users__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(56, 189, 248, 0.16);
+}
+
+.page-c4.admin-panel .admin-users__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+}
+
+.page-c4.admin-panel .admin-users__name::before {
+  content: '\2022';
+  color: rgba(56, 189, 248, 0.8);
+  font-size: 1.4em;
+  line-height: 1;
+}
+
+.page-c4.admin-panel .admin-users__empty {
+  text-align: center;
+  padding: 24px 0;
+  color: rgba(248, 250, 252, 0.68);
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px dashed rgba(56, 189, 248, 0.28);
+}
+
+.page-c4.admin-panel .admin-users__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.page-c4.spectator-view .spectator-card {
+  display: grid;
+  gap: 18px;
+}
+
+.page-c4.spectator-view .spectator-status {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.page-c4.spectator-view #grille {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.page-c4.spectator-view .spectator-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.page-c4.spectator-view .case {
+  cursor: default;
+}
+
+.page-c4.spectator-view .case:hover:not(.rouge):not(.jaune) {
+  transform: none;
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.45);
+}
+
+@media (max-width: 720px) {
+  .page-c4.admin-panel .admin-users__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .page-c4.admin-panel .admin-users__item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-c4.admin-panel .admin-users__actions .neo-button {
+    width: 100%;
   }
 }
 

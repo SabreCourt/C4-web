@@ -2492,15 +2492,5 @@ def tetris_game_over(data):
         final_reason = reason if reason in {'forfeit', 'disconnect'} else 'score'
         _tetris_finish_room(room_id, winner=winner, loser=loser, reason=final_reason, draw=draw)
 
-@socketio.on("demande_video")
-def handle_demande_video(data):
-    to = data["to"]
-    print(f"[DEMANDE VIDEO] Vers {to}")
-    for sid, pseudo in connected_users.items():
-        print(f"SocketID: {sid} -> {pseudo}")
-        if pseudo == to:
-            socketio.emit("demande_video", data, room=sid)
-
-
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000, debug=True)
