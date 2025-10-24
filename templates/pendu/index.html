@@ -6,6 +6,7 @@
   <title>Pendu</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
+  <script src="{{ url_for('static', filename='js/audio-manager.js') }}" defer></script>
 </head>
 <body class="neo-arcade-page page-pendu theme-pendu">
   <div class="portal-transition" id="portal"></div>
@@ -16,6 +17,7 @@
       <p>Devine le mot avant la fin.</p>
     </div>
     <div class="game-header__actions">
+      <button type="button" class="neo-button tertiary" data-sound-toggle>🔊 Ambiance</button>
       <button type="button" class="neo-button primary" id="new-game">Nouvelle partie</button>
       <a class="neo-button secondary" data-portal-link href="{{ url_for('profile') }}">Profil</a>
     </div>
@@ -87,6 +89,10 @@
       });
     });
 
+    if (window.arcadeAudio) {
+      window.arcadeAudio.setScene('pendu');
+    }
+
     const INITIAL_STATE = {{ pendu_state|tojson }};
     const wordElement = document.getElementById('pendu-word');
     const attemptsElement = document.getElementById('pendu-attempts');
@@ -98,6 +104,14 @@
     const newGameButton = document.getElementById('new-game');
     const statusElement = document.getElementById('pendu-status');
     const hangmanParts = document.querySelectorAll('.hangman-part');
+
+    let lastStatus = INITIAL_STATE && INITIAL_STATE.status ? INITIAL_STATE.status : null;
+    let lastIncorrectCount = INITIAL_STATE && Array.isArray(INITIAL_STATE.incorrect_letters)
+      ? INITIAL_STATE.incorrect_letters.length
+      : 0;
+    let lastCorrectCount = INITIAL_STATE && Array.isArray(INITIAL_STATE.correct_letters)
+      ? INITIAL_STATE.correct_letters.length
+      : 0;
 
     function updateMessage(content, status) {
       messageElement.textContent = content || '';
@@ -168,6 +182,30 @@
         statusElement.classList.toggle('visible', Boolean(statusText));
       }
 
+      const statusValue = state.status || 'playing';
+      const incorrectCount = Array.isArray(state.incorrect_letters) ? state.incorrect_letters.length : 0;
+      const correctCount = Array.isArray(state.correct_letters) ? state.correct_letters.length : 0;
+      if (window.arcadeAudio) {
+        if (statusValue !== lastStatus) {
+          if (statusValue === 'won') {
+            window.arcadeAudio.playEffect('victory');
+          } else if (statusValue === 'lost') {
+            window.arcadeAudio.playEffect('defeat');
+          } else if (lastStatus && (lastStatus === 'won' || lastStatus === 'lost')) {
+            window.arcadeAudio.playEffect('menuSelect');
+          }
+          lastStatus = statusValue;
+        } else if (statusValue !== 'won' && statusValue !== 'lost') {
+          if (correctCount > lastCorrectCount) {
+            window.arcadeAudio.playEffect('tokenDrop', { variant: 0 });
+          } else if (incorrectCount > lastIncorrectCount) {
+            window.arcadeAudio.playEffect('tokenDrop', { variant: 1 });
+          }
+        }
+      }
+      lastIncorrectCount = incorrectCount;
+      lastCorrectCount = correctCount;
+
       if (newGameButton) {
         newGameButton.classList.toggle('is-ready', state.status === 'won' || state.status === 'lost');
       }
@@ -184,6 +222,9 @@
     }
 
     async function startNewGame() {
+      if (window.arcadeAudio) {
+        window.arcadeAudio.playEffect('menuSelect');
+      }
       const response = await fetch("{{ url_for('pendu_new_game') }}", { method: 'POST' });
       const payload = await response.json();
       renderState(payload.state, 'Nouvelle partie !');

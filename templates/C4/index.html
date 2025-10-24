@@ -6,6 +6,7 @@
   <title>Puissance 4</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
+  <script src="{{ url_for('static', filename='js/audio-manager.js') }}" defer></script>
 </head>
 <body class="neo-arcade-page page-c4 theme-puissance4">
   <div class="portal-transition" id="portal"></div>
@@ -15,7 +16,8 @@
       <h1>Puissance 4</h1>
       <p>Affronte l'IA ou un joueur en ligne.</p>
   </div>
-  <div class="game-header__actions">
+    <div class="game-header__actions">
+      <button type="button" class="neo-button tertiary" data-sound-toggle>🔊 Ambiance</button>
       <a class="neo-button secondary" data-portal-link href="{{ url_for('lobby') }}">Lobby</a>
     </div>
   </header>
@@ -91,6 +93,10 @@
     socket.on("connect", () => {
       socket.emit("pseudo", "{{ pseudo|e }}");
     });
+
+    if (window.arcadeAudio) {
+      window.arcadeAudio.setScene('puissance4');
+    }
 
     window.onload = () => {
       pseudo = document.getElementById("pseudo").value || "Invité";
@@ -199,6 +205,9 @@
           return;
         }
         cell.classList.add(joueur === 1 ? "rouge" : "jaune", "chute");
+        if (window.arcadeAudio) {
+          window.arcadeAudio.playEffect('tokenDrop', { variant: joueur === 1 ? 0 : 1 });
+        }
 
         setTimeout(() => {
           cell.classList.remove("chute");
@@ -279,6 +288,9 @@
         document.getElementById("message").textContent = "Vous avez gagné ! 🎉";
         surlignerVictoire(resultat.coords, 1);
         jeuFini = true;
+        if (window.arcadeAudio) {
+          window.arcadeAudio.playEffect('victory');
+        }
         await signalerFinPartie("joueur");
         return;
       }
@@ -309,6 +321,9 @@
         document.getElementById("message").textContent = "L'IA a gagné ! 🤖";
         surlignerVictoire(resultat.coords, 2);
         jeuFini = true;
+        if (window.arcadeAudio) {
+          window.arcadeAudio.playEffect('defeat');
+        }
         await signalerFinPartie("ia");
         return;
       }

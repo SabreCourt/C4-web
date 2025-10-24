@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
+  <script src="{{ url_for('static', filename='js/audio-manager.js') }}" defer></script>
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" integrity="sha384-KA7m0DwgQGmeRC6Xre3hJO+ZxpanOauVh4Czdqbg8lDKJ3bZZYVYmP+y4F31x40L" crossorigin="anonymous"></script>
 </head>
 <body class="neo-arcade-page page-tetris theme-tetris">
@@ -17,6 +18,7 @@
       <p>Empile les pièces et maîtrise le rythme.</p>
     </div>
     <div class="game-header__actions">
+      <button type="button" class="neo-button tertiary" data-sound-toggle>🔊 Ambiance</button>
       <button type="button" class="neo-button primary" id="header-new-game">Nouvelle partie</button>
       <a class="neo-button secondary" data-portal-link href="{{ url_for('profile') }}">Profil</a>
     </div>
@@ -185,9 +187,16 @@
       });
     });
 
+    if (window.arcadeAudio) {
+      window.arcadeAudio.setScene('tetris');
+    }
+
     const headerNewGameButton = document.getElementById('header-new-game');
     if (headerNewGameButton) {
       headerNewGameButton.addEventListener('click', () => {
+        if (window.arcadeAudio) {
+          window.arcadeAudio.playEffect('menuSelect');
+        }
         const activeMode = document.querySelector('.mode-switch button.active');
         const mode = activeMode ? activeMode.dataset.mode : 'solo';
         if (mode === 'solo') {
@@ -333,6 +342,7 @@
         this.score = 0;
         this.lines = 0;
         this.lastClearWasTetris = false;
+        this.lastLockWasHardDrop = false;
         this.lastTime = 0;
         this.dropCounter = 0;
         this.startTimeMs = null;
@@ -425,6 +435,7 @@
         this.dropCounter = 0;
         this.startTimeMs = performance.now();
         this.lastTime = this.startTimeMs;
+        this.lastLockWasHardDrop = false;
         if (!this.spawnPiece()) {
           this.gameOver('top_out');
           return;
@@ -481,6 +492,7 @@
           }
           return;
         }
+        this.lastLockWasHardDrop = false;
         this.lockPiece();
       }
 
@@ -507,6 +519,7 @@
           this.score += distance * 2;
           this.onScoreChange({ score: this.score, lines: this.lines });
         }
+        this.lastLockWasHardDrop = true;
         this.lockPiece();
       }
 
@@ -559,6 +572,9 @@
             this.board[boardRow][boardCol] = type;
           }
         }
+        if (window.arcadeAudio) {
+          window.arcadeAudio.playEffect('pieceLand', { hardDrop: this.lastLockWasHardDrop });
+        }
         const wasBackToBack = this.lastClearWasTetris;
         const { count: cleared, allClear } = this.clearLines();
         if (cleared > 0) {
@@ -574,6 +590,9 @@
           }
           this.score += points;
           this.lines += cleared;
+          if (window.arcadeAudio) {
+            window.arcadeAudio.playEffect('lineClear', { count: cleared });
+          }
           this.onScoreChange({ score: this.score, lines: this.lines });
           this.lastClearWasTetris = isTetris;
         }
@@ -584,6 +603,7 @@
         }
         this.onBoardChange({ board: cloneBoard(this.board), score: this.score, lines: this.lines });
         this.draw();
+        this.lastLockWasHardDrop = false;
       }
 
       clearLines() {
@@ -808,6 +828,7 @@
     async function saveSoloScore(score) {
       if (solo.isSaving || score <= solo.bestScore) return;
       solo.isSaving = true;
+      const previousBest = solo.bestScore;
       try {
         const response = await fetch('/tetris/highscore', {
           method: 'POST',
@@ -817,9 +838,14 @@
         if (response.ok) {
           const payload = await response.json();
           if (typeof payload.score === 'number') {
-            solo.bestScore = payload.score;
+            const newScore = payload.score;
+            const improved = newScore > previousBest;
+            solo.bestScore = newScore;
             solo.bestEl.textContent = solo.bestScore;
             solo.bestSub.textContent = 'Record mis à jour !';
+            if (window.arcadeAudio && improved) {
+              window.arcadeAudio.playEffect('victory');
+            }
           }
         }
       } catch (error) {
@@ -840,6 +866,13 @@
         : 'Partie terminée.';
       activeGame = null;
       saveSoloScore(result.score);
+      if (window.arcadeAudio) {
+        if (result.reason === 'top_out') {
+          window.arcadeAudio.playEffect('defeat');
+        } else {
+          window.arcadeAudio.playEffect('menuSelect');
+        }
+      }
     }
 
     function startSoloGame() {
@@ -863,7 +896,12 @@
       solo.game.start();
     }
 
-    solo.startBtn.addEventListener('click', startSoloGame);
+    solo.startBtn.addEventListener('click', () => {
+      if (window.arcadeAudio) {
+        window.arcadeAudio.playEffect('menuSelect');
+      }
+      startSoloGame();
+    });
 
     refreshSoloBest();
 
@@ -935,12 +973,18 @@
         }
         const nextReady = !multi.isReady;
         multi.readyBtn.disabled = true;
+        if (window.arcadeAudio) {
+          window.arcadeAudio.playEffect('menuSelect');
+        }
         socket.emit('tetris_set_ready', { room_id: multi.roomId, ready: nextReady });
       });
     }
 
     if (multi.postGameNewBtn) {
       multi.postGameNewBtn.addEventListener('click', () => {
+        if (window.arcadeAudio) {
+          window.arcadeAudio.playEffect('menuSelect');
+        }
         resetMultiState('Choisis une salle pour relancer un duel.');
         if (multi.createBtn) {
           multi.createBtn.focus();
@@ -1419,6 +1463,9 @@
           reason: result.reason
         });
       }
+      if (window.arcadeAudio) {
+        window.arcadeAudio.playEffect('defeat');
+      }
       activeGame = null;
     }
 
@@ -1507,13 +1554,28 @@
     }
 
     if (multi.createBtn) {
-      multi.createBtn.addEventListener('click', createLobbyRoom);
+      multi.createBtn.addEventListener('click', () => {
+        if (window.arcadeAudio) {
+          window.arcadeAudio.playEffect('menuSelect');
+        }
+        createLobbyRoom();
+      });
     }
     if (multi.refreshBtn) {
-      multi.refreshBtn.addEventListener('click', () => fetchTetrisRooms(true));
+      multi.refreshBtn.addEventListener('click', () => {
+        if (window.arcadeAudio) {
+          window.arcadeAudio.playEffect('menuSelect');
+        }
+        fetchTetrisRooms(true);
+      });
     }
     if (multi.leaveRoomBtn) {
-      multi.leaveRoomBtn.addEventListener('click', leaveLobbyRoom);
+      multi.leaveRoomBtn.addEventListener('click', () => {
+        if (window.arcadeAudio) {
+          window.arcadeAudio.playEffect('menuSelect');
+        }
+        leaveLobbyRoom();
+      });
     }
 
     multi.leaveBtn.addEventListener('click', () => {
@@ -1523,6 +1585,9 @@
         multi.gameInstance.stop();
       }
       activeGame = null;
+      if (window.arcadeAudio) {
+        window.arcadeAudio.playEffect('menuSelect');
+      }
       socket.emit('tetris_leave_match');
       multi.gameStatusEl.textContent = 'Vous avez quitté la partie. Retour au lobby…';
     });
@@ -1556,6 +1621,9 @@
       multi.opponentNameEl.textContent = multi.opponent;
       multi.pieceQueue = Array.isArray(data.pieces) ? data.pieces.slice() : [];
       multi.pendingRequests = 0;
+      if (window.arcadeAudio) {
+        window.arcadeAudio.playEffect('menuSelect');
+      }
       stopLobbyPolling();
       if (multi.lobbyMessageEl) {
         multi.lobbyMessageEl.textContent = '';
@@ -1631,6 +1699,9 @@
       if (multi.roomId && data.room_id && data.room_id !== multi.roomId) return;
       const name = data.opponent || multi.opponent || 'Adversaire';
       multi.gameStatusEl.textContent = `${name} est éliminé !`;
+      if (window.arcadeAudio) {
+        window.arcadeAudio.playEffect('menuSelect');
+      }
       if (typeof data.score === 'number') {
         multi.opponentScoreEl.textContent = data.score;
       }
@@ -1691,6 +1762,17 @@
       }
       if (multi.postGameSummaryEl) {
         multi.postGameSummaryEl.textContent = summary;
+      }
+      if (window.arcadeAudio) {
+        if (draw) {
+          window.arcadeAudio.playEffect('menuSelect');
+        } else if (youWon) {
+          window.arcadeAudio.playEffect('victory');
+        } else if (youLost) {
+          window.arcadeAudio.playEffect('defeat');
+        } else if (data.reason === 'disconnect') {
+          window.arcadeAudio.playEffect('menuSelect');
+        }
       }
     });
 
