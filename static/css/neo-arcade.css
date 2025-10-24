@@ -31,6 +31,10 @@
   box-sizing: border-box;
 }
 
+.hidden {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -1341,6 +1345,7 @@ body.theme-tetris {
   border-radius: var(--radius-sm);
   background: rgba(7, 18, 32, 0.92);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  touch-action: none;
 }
 
 .page-tetris .stat-card {
@@ -1382,11 +1387,58 @@ body.theme-tetris {
   line-height: 1.6;
 }
 
+.page-tetris .multi-controls {
+  margin-top: 18px;
+}
+
+.page-tetris .controls .control-copy {
+  margin: 12px 0 0;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.page-tetris .controls .control-copy strong {
+  color: var(--color-text);
+}
+
 .page-tetris .lobby-actions,
 .page-tetris .your-room-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.page-tetris .lobby-card h4 {
+  margin: 20px 0 10px;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.72);
+}
+
+.page-tetris .lobby-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.page-tetris .lobby-message {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  color: rgba(248, 250, 252, 0.86);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.page-tetris .lobby-help {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: rgba(248, 250, 252, 0.7);
 }
 
 .page-tetris .room-list {
@@ -1423,6 +1475,40 @@ body.theme-tetris {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.page-tetris .your-room__code {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.page-tetris .your-room__code-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.72);
+}
+
+.page-tetris .your-room__code-value {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  font-family: 'Orbitron', 'Poppins', sans-serif;
+}
+
+.page-tetris .your-room__status {
+  margin: 0;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.page-tetris .your-room__hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(248, 250, 252, 0.7);
 }
 
 .page-tetris .duel-stage {
