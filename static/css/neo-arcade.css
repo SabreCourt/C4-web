@@ -183,6 +183,8 @@ p {
 
 .nav-hub .nav-items {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: clamp(12px, 1.8vw, 20px);
 }
 
@@ -304,14 +306,26 @@ p {
 
 @media (max-width: 768px) {
   .nav-hub {
+    position: static;
+    top: auto;
     flex-direction: column;
     align-items: stretch;
+    gap: 20px;
   }
   .nav-hub .nav-items {
-    justify-content: space-between;
+    width: 100%;
+    justify-content: center;
   }
   .nav-item {
-    flex: 1 1 auto;
+    flex: 1 1 calc(50% - 12px);
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .nav-item {
+    flex: 1 1 100%;
   }
 }
 
@@ -464,6 +478,24 @@ body.theme-tetris {
   gap: clamp(10px, 2vw, 18px);
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .game-header {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    gap: 18px;
+  }
+  .game-header__brand {
+    justify-self: center;
+  }
+  .game-header__meta {
+    text-align: center;
+  }
+  .game-header__actions {
+    justify-content: center;
+  }
 }
 
 .game-main {
@@ -834,8 +866,21 @@ body.theme-tetris {
 }
 
 @media (max-width: 720px) {
+  .page-c4 .container {
+    padding: clamp(18px, 5vw, 24px);
+  }
   .page-c4 #grille {
-    grid-template-columns: repeat(7, minmax(44px, 1fr));
+    grid-template-columns: repeat(7, minmax(36px, 1fr));
+    gap: clamp(6px, 1.8vw, 10px);
+    padding: clamp(10px, 3.6vw, 16px);
+  }
+}
+
+@media (max-width: 420px) {
+  .page-c4 #grille {
+    grid-template-columns: repeat(7, minmax(32px, 1fr));
+    gap: 6px;
+    padding: 10px;
   }
 }
 
@@ -1148,11 +1193,6 @@ body.theme-tetris {
   color: var(--color-muted);
 }
 
-.page-profile .profile-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
 .page-profile .profile-settings h2 {
   margin: 0;
 }
@@ -1202,32 +1242,6 @@ body.theme-tetris {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-}
-
-@media (max-width: 720px) {
-  .page-profile .profile-actions {
-    justify-content: flex-start;
-  }
-}
-
-.page-pendu .back-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px 22px;
-  border-radius: 999px;
-  background: rgba(248, 113, 113, 0.22);
-  border: 1px solid rgba(248, 113, 113, 0.45);
-  color: #fecaca;
-  font-weight: 600;
-  text-decoration: none;
-  transition: var(--transition-fast);
-}
-
-.page-pendu .back-link:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 32px rgba(248, 113, 113, 0.32);
 }
 
 /* ------------------------------------------------------------
@@ -1633,14 +1647,6 @@ body.theme-tetris {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-}
-
-.page-tetris .back-link {
-  align-self: flex-start;
-  text-decoration: none;
-  color: var(--color-text);
-  font-weight: 600;
-  letter-spacing: 0.05em;
 }
 
 @media (max-width: 960px) {
