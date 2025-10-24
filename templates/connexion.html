@@ -59,7 +59,6 @@
 
       <div class="auth-aux">
         <a href="/forgot_password" id="forgot-link">Mot de passe oublié&nbsp;?</a>
-        <button type="button" id="register-shortcut">Créer un compte</button>
       </div>
 
       {% if pseudos %}
@@ -120,11 +119,6 @@
 
     tabLogin.addEventListener('click', () => setMode('login'));
     tabRegister.addEventListener('click', () => setMode('register'));
-
-    document.getElementById('register-shortcut').addEventListener('click', () => {
-      setMode('register');
-      tabRegister.focus();
-    });
 
     document.getElementById('auth-form').addEventListener('submit', async event => {
       event.preventDefault();
