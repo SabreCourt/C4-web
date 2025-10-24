@@ -3,305 +3,179 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Connexion – Puissance 4</title>
-  <style>
-    /* --- RESET --- */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: #f0f4f8;
-    }
-
-    /* --- CONTAINER --- */
-    .container {
-      width: 100%;
-      max-width: 420px;
-      padding: 32px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.05);
-      box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(10px);
-      text-align: center;
-      animation: fadeIn 0.6s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(15px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    /* --- TABS --- */
-    .tabs {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 1rem;
-    }
-
-    .tab {
-      flex: 1;
-      padding: 10px;
-      cursor: pointer;
-      border-radius: 8px;
-      border: 1px solid transparent;
-      background: rgba(255, 255, 255, 0.06);
-      transition: 0.2s ease;
-      font-weight: 500;
-      color: #cde0ff;
-    }
-
-    .tab:hover {
-      background: rgba(255, 255, 255, 0.12);
-    }
-
-    .tab.active {
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      color: #031427;
-      font-weight: 600;
-    }
-
-    /* --- FORM --- */
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-top: 8px;
-    }
-
-    input[type="text"],
-    input[type="email"],
-    input[type="password"] {
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      background: rgba(0, 0, 0, 0.25);
-      color: white;
-      outline: none;
-      transition: 0.2s ease;
-    }
-
-    input:focus {
-      border-color: #1E90FF;
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    button {
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      background: linear-gradient(90deg, #1E90FF, #00c6ff);
-      color: #031427;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.15s ease;
-    }
-
-    button:hover {
-      transform: translateY(-2px);
-    }
-
-    /* --- MESSAGES --- */
-    .note {
-      font-size: 0.9rem;
-      margin-top: 0.5rem;
-      color: #ddd;
-    }
-
-    .error { color: #ffb3b3; }
-    .success { color: #b6ffb6; }
-
-    .aux-links {
-      margin-top: 12px;
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.9rem;
-    }
-
-    .aux-links a,
-    .aux-links button.link {
-      color: #cde0ff;
-      text-decoration: none;
-      background: none;
-      border: none;
-      padding: 0;
-      font: inherit;
-      cursor: pointer;
-      transition: color 0.2s ease;
-    }
-
-    .aux-links a:hover,
-    .aux-links button.link:hover {
-      color: #fff;
-    }
-
-    /* --- LISTE PSEUDOS --- */
-    .existing-list {
-      margin-top: 20px;
-      text-align: left;
-      font-size: 0.9rem;
-      color: #ccc;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 10px;
-      border-radius: 8px;
-      max-height: 120px;
-      overflow-y: auto;
-      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.4);
-    }
-
-    .existing-list div {
-      padding: 4px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .existing-list div:last-child {
-      border-bottom: none;
-    }
-
-    @media (max-width: 480px) {
-      .container { margin: 20px; padding: 24px; }
-      h1 { font-size: 1.6rem; }
-    }
-  </style>
+  <title>Connexion – Neo Arcade Hub</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
 </head>
-
-<body>
-  <div class="container">
-    <h1>Puissance 4</h1>
-
-    <div class="tabs">
-      <div id="tab-login" class="tab active">Se connecter</div>
-      <div id="tab-register" class="tab">Créer un compte</div>
+<body class="neo-arcade-page auth-page theme-puissance4">
+  <main class="auth-shell" role="main">
+    <div class="auth-brand">
+      <h1 class="auth-brand__title">Neo Arcade Hub</h1>
+      <p class="auth-brand__subtitle">Rejoins l'arcade futuriste pour défier l'IA ou tes amis en ligne.</p>
     </div>
 
-    <div id="messages" class="note{% if initial_status %} {{ initial_status }}{% endif %}" data-message="{{ initial_message|default('', true) }}" data-status="{{ initial_status|default('', true) }}">{% if initial_message %}{{ initial_message }}{% endif %}</div>
-
-    <form id="auth-form" onsubmit="return false;">
-      <input type="text" id="username" name="username" placeholder="Nom d'utilisateur" required>
-      <input type="email" id="email" name="email" placeholder="Adresse email" style="display:none;">
-      <input type="password" id="password" name="password" placeholder="Mot de passe" required>
-      <input type="password" id="password2" name="password2" placeholder="Confirmez le mot de passe" style="display:none;">
-      <button id="submit-btn">Se connecter</button>
-    </form>
-
-    <div class="aux-links">
-      <a href="/forgot_password" id="forgot-link">Mot de passe oublié ?</a>
-    </div>
-
-    {% if pseudos %}
-      <p class="note" style="margin-top:12px;">Pseudos récents :</p>
-      <div class="existing-list">
-        {% for p in pseudos %}
-          <div>{{ p }}</div>
-        {% endfor %}
+    <section class="auth-card" aria-labelledby="tab-login">
+      <div class="auth-tabs" role="tablist" aria-label="Modes de connexion">
+        <button type="button" id="tab-login" class="auth-tab is-active" data-mode="login" role="tab" aria-selected="true">Se connecter</button>
+        <button type="button" id="tab-register" class="auth-tab" data-mode="register" role="tab" aria-selected="false">Créer un compte</button>
       </div>
-    {% endif %}
-  </div>
+
+      <div
+        id="messages"
+        class="auth-message{% if initial_status %} {{ initial_status }}{% endif %}"
+        role="status"
+        data-message="{{ initial_message|default('', true) }}"
+        data-status="{{ initial_status|default('', true) }}"
+      >{% if initial_message %}{{ initial_message }}{% endif %}</div>
+
+      <form id="auth-form" class="auth-form" onsubmit="return false;">
+        <label class="auth-field" for="username">
+          <span>Nom d'utilisateur</span>
+          <input type="text" id="username" name="username" class="auth-input" autocomplete="username" required />
+        </label>
+
+        <div class="auth-field is-hidden" id="field-email">
+          <label for="email">
+            <span>Adresse email</span>
+            <input type="email" id="email" name="email" class="auth-input" autocomplete="email" />
+          </label>
+        </div>
+
+        <label class="auth-field" for="password">
+          <span>Mot de passe</span>
+          <input type="password" id="password" name="password" class="auth-input" autocomplete="current-password" required />
+        </label>
+
+        <div class="auth-field is-hidden" id="field-password2">
+          <label for="password2">
+            <span>Confirmer le mot de passe</span>
+            <input type="password" id="password2" name="password2" class="auth-input" autocomplete="new-password" />
+          </label>
+        </div>
+
+        <button id="submit-btn" class="neo-button primary auth-submit" type="submit">Se connecter</button>
+      </form>
+
+      <div class="auth-aux">
+        <a href="/forgot_password" id="forgot-link">Mot de passe oublié&nbsp;?</a>
+      </div>
+
+      {% if pseudos %}
+      <aside class="auth-recent" aria-label="Pseudos récents">
+        <p class="auth-recent__title">Dernières connexions</p>
+        <ul class="auth-recent__list">
+          {% for p in pseudos %}
+          <li class="auth-recent__item">{{ p }}</li>
+          {% endfor %}
+        </ul>
+      </aside>
+      {% endif %}
+    </section>
+  </main>
 
   <script>
-    const tabLogin = document.getElementById('tab-login');
-    const tabRegister = document.getElementById('tab-register');
-    const emailField = document.getElementById('email');
-    const password2 = document.getElementById('password2');
+    const tabLogin = document.querySelector('[data-mode="login"]');
+    const tabRegister = document.querySelector('[data-mode="register"]');
+    const tabs = [tabLogin, tabRegister];
+    const emailField = document.getElementById('field-email');
+    const emailInput = document.getElementById('email');
+    const passwordField = document.getElementById('password');
+    const password2Wrapper = document.getElementById('field-password2');
+    const password2Input = document.getElementById('password2');
     const submitBtn = document.getElementById('submit-btn');
     const messages = document.getElementById('messages');
 
     const initialMessage = messages.dataset.message;
     const initialStatus = messages.dataset.status;
-    if(initialMessage){
+    if (initialMessage) {
       messages.textContent = initialMessage;
-      messages.className = `note ${initialStatus || ''}`.trim();
+      messages.className = `auth-message ${initialStatus || ''}`.trim();
     }
 
-    function setMode(mode){
-      if(mode === 'login'){
-        tabLogin.classList.add('active');
-        tabRegister.classList.remove('active');
-        emailField.style.display = 'none';
-        password2.style.display = 'none';
+    function setMode(mode) {
+      const isLogin = mode === 'login';
+      tabs.forEach(tab => {
+        const active = tab.dataset.mode === mode;
+        tab.classList.toggle('is-active', active);
+        tab.setAttribute('aria-selected', active.toString());
+      });
+
+      emailField.classList.toggle('is-hidden', isLogin);
+      password2Wrapper.classList.toggle('is-hidden', isLogin);
+      if (isLogin) {
+        emailInput.value = '';
+        password2Input.value = '';
+        passwordField.setAttribute('autocomplete', 'current-password');
         submitBtn.textContent = 'Se connecter';
       } else {
-        tabLogin.classList.remove('active');
-        tabRegister.classList.add('active');
-        emailField.style.display = 'block';
-        password2.style.display = 'block';
+        passwordField.setAttribute('autocomplete', 'new-password');
         submitBtn.textContent = 'Créer le compte';
       }
+
       messages.textContent = '';
-      messages.className = 'note';
+      messages.className = 'auth-message';
     }
 
-    tabLogin.addEventListener('click', ()=> setMode('login'));
-    tabRegister.addEventListener('click', ()=> setMode('register'));
+    tabLogin.addEventListener('click', () => setMode('login'));
+    tabRegister.addEventListener('click', () => setMode('register'));
 
-    document.getElementById('auth-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const mode = tabRegister.classList.contains('active') ? 'register' : 'login';
+    document.getElementById('auth-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const mode = tabRegister.classList.contains('is-active') ? 'register' : 'login';
       const username = document.getElementById('username').value.trim();
-      const email = emailField.value.trim();
+      const email = emailInput.value.trim();
       const password = document.getElementById('password').value;
-      const password_2 = document.getElementById('password2').value;
+      const password2 = password2Input.value;
 
-      if(!username || !password || (mode === 'register' && !email)){
+      if (!username || !password || (mode === 'register' && !email)) {
         messages.textContent = 'Veuillez remplir tous les champs obligatoires.';
-        messages.className = 'note error';
+        messages.className = 'auth-message error';
         return;
       }
-      if(mode === 'register' && password !== password_2){
+
+      if (mode === 'register' && password !== password2) {
         messages.textContent = 'Les mots de passe ne correspondent pas.';
-        messages.className = 'note error';
+        messages.className = 'auth-message error';
         return;
       }
 
       const payload = { username, password };
-      if(mode === 'register'){
-        payload.password2 = password_2;
+      if (mode === 'register') {
+        payload.password2 = password2;
         payload.email = email;
       }
 
       const endpoint = mode === 'register' ? '/register' : '/login';
-      try{
-        const res = await fetch(endpoint, {
+
+      try {
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        const data = await res.json();
-        if(res.ok && data.ok){
+        const data = await response.json();
+
+        if (response.ok && data.ok) {
           messages.textContent = 'Succès — redirection...';
-          messages.className = 'note success';
+          messages.className = 'auth-message success';
           window.location.href = '/menu';
         } else {
-          let err = data && data.error ? data.error : 'Erreur inconnue';
-          if(err === 'pseudo_taken') err = "Nom d'utilisateur déjà pris.";
-          else if(err === 'email_taken') err = "Adresse email déjà utilisée.";
-          else if(err === 'invalid_email') err = "Veuillez saisir une adresse email valide.";
-          else if(err === 'invalid_credentials') err = "Nom d'utilisateur ou mot de passe invalide.";
-          else if(err === 'password_mismatch') err = "Les mots de passe ne correspondent pas.";
-          else if(err === 'missing_fields') err = "Champs manquants.";
-          messages.textContent = err;
-          messages.className = 'note error';
+          let error = data && data.error ? data.error : 'Erreur inconnue';
+          if (error === 'pseudo_taken') error = "Nom d'utilisateur déjà pris.";
+          else if (error === 'email_taken') error = 'Adresse email déjà utilisée.';
+          else if (error === 'invalid_email') error = 'Veuillez saisir une adresse email valide.';
+          else if (error === 'invalid_credentials') error = "Nom d'utilisateur ou mot de passe invalide.";
+          else if (error === 'password_mismatch') error = 'Les mots de passe ne correspondent pas.';
+          else if (error === 'missing_fields') error = 'Champs manquants.';
+
+          messages.textContent = error;
+          messages.className = 'auth-message error';
         }
-      }catch(err){
+      } catch (error) {
+        console.error(error);
         messages.textContent = 'Erreur réseau.';
-        messages.className = 'note error';
-        console.error(err);
+        messages.className = 'auth-message error';
       }
     });
   </script>
