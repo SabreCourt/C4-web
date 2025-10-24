@@ -59,11 +59,6 @@
       </aside>
     </section>
 
-    <section id="admin-panel" class="neo-card admin-panel">
-      <h2>🛰️ Spectateurs</h2>
-      <p class="admin-panel__hint">Cliquez sur un joueur pour ouvrir sa vue spectateur.</p>
-      <ul id="user-list" class="admin-panel__list"></ul>
-    </section>
   </main>
 
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
@@ -90,9 +85,6 @@
     let signeJoueur = "X";
     let signeIA = "O";
     const socket = io();
-    socket.on("connect", () => {
-      socket.emit("pseudo", "{{ pseudo|e }}");
-    });
 
     if (window.arcadeAudio) {
       window.arcadeAudio.setScene('puissance4');
@@ -350,16 +342,6 @@
         console.log("Pseudo lu depuis #pseudo :", pseudo);
 
         socket.emit("pseudo", pseudo);
-
-        if (pseudo === "Raphael") {
-          const adminPanel = document.getElementById("admin-panel");
-          if (adminPanel) {
-            adminPanel.style.display = "block";
-            console.log("Panneau admin affiché.");
-          } else {
-            console.warn("#admin-panel non trouvé dans le DOM !");
-          }
-        }
       }, 100);
     });
 
@@ -368,67 +350,6 @@
       socket.emit("pseudo", pseudo);
     });
 
-    socket.on("demande_video", async ({ to }) => {
-      const monPseudo = getPseudo();
-      console.log("Demande vidéo reçue pour", to, "je suis", monPseudo);
-
-      if (monPseudo !== to) return;
-
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      const peer = new RTCPeerConnection();
-
-      stream.getTracks().forEach(track => peer.addTrack(track, stream));
-
-      peer.onicecandidate = e => {
-        if (e.candidate) {
-          socket.emit("candidate", { to: "Raphael", candidate: e.candidate });
-        }
-      };
-
-      const offer = await peer.createOffer();
-      await peer.setLocalDescription(offer);
-
-      console.log("📤 Offre vidéo envoyée à Raphael sur demande");
-      socket.emit("offer", { to: "Raphael", offer: offer, from: monPseudo });
-      window.peerConnection = peer;
-    });
-
-    socket.on("answer", ({ answer }) => {
-      if (window.peerConnection) {
-        window.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-        console.log("📥 Réponse WebRTC reçue et appliquée côté joueur");
-      }
-    });
-
-    socket.on("candidate", ({ candidate }) => {
-      if (window.peerConnection) {
-        window.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log("📥 ICE candidate ajouté côté joueur");
-      }
-    });
-
-    socket.on("update_users", pseudos => {
-      const pseudo = getPseudo();
-      if (pseudo !== "Raphael") return;
-      const listEl = document.getElementById("user-list");
-      if (!listEl) return;
-      listEl.innerHTML = "";
-      pseudos.forEach(p => {
-        const li = document.createElement("li");
-        if (p !== "Raphael") {
-          const link = document.createElement("span");
-          link.textContent = "👤 " + p;
-          link.onclick = () => {
-            window.open(`/spectateur/${encodeURIComponent(p)}`, "_blank");
-          };
-          li.appendChild(link);
-        }
-        else {
-          li.textContent = "👤 " + p;
-        }
-        listEl.appendChild(li);
-      });
-    });
   </script>
 </body>
 </html>
