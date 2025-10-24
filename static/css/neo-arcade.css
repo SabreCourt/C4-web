@@ -183,6 +183,8 @@ p {
 
 .nav-hub .nav-items {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: clamp(12px, 1.8vw, 20px);
 }
 
@@ -308,10 +310,19 @@ p {
     align-items: stretch;
   }
   .nav-hub .nav-items {
-    justify-content: space-between;
+    width: 100%;
+    justify-content: center;
   }
   .nav-item {
-    flex: 1 1 auto;
+    flex: 1 1 calc(50% - 12px);
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .nav-item {
+    flex: 1 1 100%;
   }
 }
 
@@ -464,6 +475,24 @@ body.theme-tetris {
   gap: clamp(10px, 2vw, 18px);
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .game-header {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    gap: 18px;
+  }
+  .game-header__brand {
+    justify-self: center;
+  }
+  .game-header__meta {
+    text-align: center;
+  }
+  .game-header__actions {
+    justify-content: center;
+  }
 }
 
 .game-main {
@@ -1151,6 +1180,12 @@ body.theme-tetris {
 .page-profile .profile-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .page-profile .profile-actions {
+    justify-content: center;
+  }
 }
 
 .page-profile .profile-settings h2 {
