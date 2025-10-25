@@ -18,6 +18,9 @@ import uuid
 import sqlite3
 import bcrypt
 
+from datetime import datetime
+from collections import defaultdict
+
 from functools import wraps
 from flask import redirect, url_for, session
 
@@ -166,6 +169,45 @@ def init_db():
         cursor.execute("PRAGMA user_version = 4")
         conn.commit()
 
+    cursor.execute("PRAGMA user_version")
+    version = cursor.fetchone()[0]
+
+    # Ensure direct messages table exists (schema version 5)
+    if version < 5:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS direct_message (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender_id INTEGER NOT NULL,
+                receiver_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                read_at DATETIME,
+                FOREIGN KEY(sender_id) REFERENCES user(id) ON DELETE CASCADE,
+                FOREIGN KEY(receiver_id) REFERENCES user(id) ON DELETE CASCADE
+            );
+            """
+        )
+        cursor.execute("PRAGMA user_version = 5")
+        conn.commit()
+        version = 5
+    else:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS direct_message (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender_id INTEGER NOT NULL,
+                receiver_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                read_at DATETIME,
+                FOREIGN KEY(sender_id) REFERENCES user(id) ON DELETE CASCADE,
+                FOREIGN KEY(receiver_id) REFERENCES user(id) ON DELETE CASCADE
+            );
+            """
+        )
+        conn.commit()
+
     conn.close()
 
 
@@ -197,6 +239,17 @@ def get_user_id(pseudo: str):
     row = cursor.fetchone()
     conn.close()
     return row[0] if row else None
+
+
+def get_user_by_pseudo(pseudo: str):
+    if not pseudo:
+        return None
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM user WHERE pseudo = ?", (pseudo,))
+    row = cursor.fetchone()
+    conn.close()
+    return row
 
 
 def ensure_user_stats(pseudo: str):
@@ -803,6 +856,274 @@ solver_lock = threading.Lock()
 @login_required
 def menu():
     return render_template("menu.html", pseudo=session["pseudo"])
+
+
+@app.route("/contacts/list")
+@login_required
+def contacts_list():
+    pseudo = session["pseudo"]
+    user_id = get_user_id(pseudo)
+    if user_id is None:
+        return jsonify({"error": "user_not_found"}), 404
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, pseudo FROM user WHERE pseudo != ? ORDER BY LOWER(pseudo)",
+        (pseudo,),
+    )
+    rows = cursor.fetchall()
+
+    cursor.execute(
+        """
+        SELECT u.pseudo AS sender, COUNT(dm.id) AS unread
+        FROM direct_message dm
+        JOIN user u ON u.id = dm.sender_id
+        WHERE dm.receiver_id = ? AND dm.read_at IS NULL
+        GROUP BY dm.sender_id
+        """,
+        (user_id,),
+    )
+    unread_map = {row["sender"]: row["unread"] for row in cursor.fetchall()}
+
+    contacts = []
+    for row in rows:
+        contact_pseudo = row["pseudo"]
+        contacts.append(
+            {
+                "pseudo": contact_pseudo,
+                "online": _is_user_online(contact_pseudo),
+                "unread_count": int(unread_map.get(contact_pseudo, 0) or 0),
+            }
+        )
+
+    conn.close()
+
+    contacts.sort(
+        key=lambda item: (
+            -int(item["online"]),
+            -int(item["unread_count"]),
+            item["pseudo"].lower(),
+        )
+    )
+    total_unread = int(sum(contact["unread_count"] for contact in contacts))
+    return jsonify({"contacts": contacts, "unread_total": total_unread})
+
+
+@app.route("/contacts/conversation/<contact_pseudo>")
+@login_required
+def contacts_conversation(contact_pseudo):
+    current_pseudo = session["pseudo"]
+    contact_name = (contact_pseudo or "").strip()
+    if not contact_name or contact_name == current_pseudo:
+        return jsonify({"error": "invalid_contact"}), 400
+
+    contact_row = get_user_by_pseudo(contact_name)
+    if not contact_row:
+        return jsonify({"error": "contact_not_found"}), 404
+
+    current_id = get_user_id(current_pseudo)
+    contact_id = contact_row["id"]
+    if current_id is None:
+        return jsonify({"error": "user_not_found"}), 404
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT dm.id, dm.sender_id, dm.receiver_id, dm.content, dm.created_at, dm.read_at,
+               su.pseudo AS sender_pseudo, ru.pseudo AS receiver_pseudo
+        FROM direct_message dm
+        JOIN user su ON su.id = dm.sender_id
+        JOIN user ru ON ru.id = dm.receiver_id
+        WHERE (dm.sender_id = ? AND dm.receiver_id = ?)
+           OR (dm.sender_id = ? AND dm.receiver_id = ?)
+        ORDER BY dm.created_at ASC, dm.id ASC
+        LIMIT 200
+        """,
+        (current_id, contact_id, contact_id, current_id),
+    )
+    rows = cursor.fetchall()
+
+    messages = [
+        {
+            "id": row["id"],
+            "from": row["sender_pseudo"],
+            "to": row["receiver_pseudo"],
+            "content": row["content"],
+            "created_at": row["created_at"],
+            "read_at": row["read_at"],
+        }
+        for row in rows
+    ]
+
+    cursor.execute(
+        """
+        UPDATE direct_message
+        SET read_at = CURRENT_TIMESTAMP
+        WHERE receiver_id = ? AND sender_id = ? AND read_at IS NULL
+        """,
+        (current_id, contact_id),
+    )
+    cleared = cursor.rowcount or 0
+    conn.commit()
+    conn.close()
+
+    contact_info = {
+        "pseudo": contact_name,
+        "online": _is_user_online(contact_name),
+        "unread_cleared": int(cleared),
+    }
+    return jsonify({"contact": contact_info, "messages": messages})
+
+
+@app.route("/contacts/conversation/<contact_pseudo>/read", methods=["POST"])
+@login_required
+def contacts_mark_read(contact_pseudo):
+    current_pseudo = session["pseudo"]
+    contact_name = (contact_pseudo or "").strip()
+    if not contact_name or contact_name == current_pseudo:
+        return jsonify({"error": "invalid_contact"}), 400
+
+    contact_row = get_user_by_pseudo(contact_name)
+    if not contact_row:
+        return jsonify({"error": "contact_not_found"}), 404
+
+    current_id = get_user_id(current_pseudo)
+    contact_id = contact_row["id"]
+    if current_id is None:
+        return jsonify({"error": "user_not_found"}), 404
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE direct_message
+        SET read_at = CURRENT_TIMESTAMP
+        WHERE receiver_id = ? AND sender_id = ? AND read_at IS NULL
+        """,
+        (current_id, contact_id),
+    )
+    updated = cursor.rowcount or 0
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "updated": int(updated)})
+
+
+@app.route("/contacts/message", methods=["POST"])
+@login_required
+def contacts_send_message():
+    sender_pseudo = session["pseudo"]
+    data = request.get_json(silent=True) or {}
+    target = (data.get("to") or data.get("receiver") or "").strip()
+    content = (data.get("content") or "").strip()
+
+    if not target or target == sender_pseudo:
+        return jsonify({"error": "invalid_contact"}), 400
+    if not content:
+        return jsonify({"error": "empty_message"}), 400
+    if len(content) > 2000:
+        return jsonify({"error": "message_too_long"}), 400
+
+    sender_id = get_user_id(sender_pseudo)
+    if sender_id is None:
+        return jsonify({"error": "user_not_found"}), 404
+
+    receiver_row = get_user_by_pseudo(target)
+    if not receiver_row:
+        return jsonify({"error": "contact_not_found"}), 404
+
+    receiver_id = receiver_row["id"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO direct_message (sender_id, receiver_id, content)
+        VALUES (?, ?, ?)
+        """,
+        (sender_id, receiver_id, content),
+    )
+    message_id = cursor.lastrowid
+    conn.commit()
+
+    cursor.execute(
+        """
+        SELECT dm.id, dm.content, dm.created_at, dm.read_at,
+               su.pseudo AS sender_pseudo, ru.pseudo AS receiver_pseudo
+        FROM direct_message dm
+        JOIN user su ON su.id = dm.sender_id
+        JOIN user ru ON ru.id = dm.receiver_id
+        WHERE dm.id = ?
+        """,
+        (message_id,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"error": "message_not_found"}), 500
+
+    message_payload = {
+        "id": row["id"],
+        "from": row["sender_pseudo"],
+        "to": row["receiver_pseudo"],
+        "content": row["content"],
+        "created_at": row["created_at"],
+        "read_at": row["read_at"],
+    }
+
+    target_sids = set(_active_sids_for(receiver_row["pseudo"]))
+    sender_sids = set(_active_sids_for(sender_pseudo))
+    for sid in target_sids.union(sender_sids):
+        socketio.emit('private_message', message_payload, room=sid)
+
+    return jsonify({"message": message_payload})
+
+
+@app.route("/ambiance/themes")
+@login_required
+def ambiance_themes():
+    themes_dir = os.path.join(app.static_folder or "", "themes")
+    themes = [
+        {
+            "id": "default",
+            "label": "Classique",
+            "background": None,
+            "effects": [],
+            "description": "Ambiance synthwave intégrée au hub.",
+        }
+    ]
+
+    if themes_dir and os.path.isdir(themes_dir):
+        for entry in sorted(os.listdir(themes_dir)):
+            if entry.startswith('.'):
+                continue
+            path = os.path.join(themes_dir, entry)
+            if not os.path.isdir(path):
+                continue
+            label = re.sub(r"[_\-]+", " ", entry).strip().title() or entry
+            background = None
+            effects = []
+            for filename in sorted(os.listdir(path)):
+                lower = filename.lower()
+                if not lower.endswith((".mp3", ".ogg", ".wav", ".m4a", ".webm")):
+                    continue
+                rel_path = os.path.join("themes", entry, filename).replace("\\", "/")
+                if background is None and ("background" in lower or "music" in lower):
+                    background = rel_path
+                else:
+                    effects.append(rel_path)
+            themes.append(
+                {
+                    "id": entry,
+                    "label": label,
+                    "background": background,
+                    "effects": effects,
+                }
+            )
+
+    return jsonify({"themes": themes})
 
 
 @app.route("/tetris")
@@ -1842,6 +2163,42 @@ def jouer():
 ######## PARTIE ADMIN AVEC WEBSOCKET ########
 
 connected_users = {}  # sid -> pseudo
+presence_counts = defaultdict(int)
+
+
+def _is_user_online(pseudo: str) -> bool:
+    if not pseudo:
+        return False
+    return presence_counts.get(pseudo, 0) > 0
+
+
+def _increment_presence(pseudo: str) -> bool:
+    if not pseudo:
+        return False
+    previous = presence_counts.get(pseudo, 0)
+    presence_counts[pseudo] = previous + 1
+    return previous == 0
+
+
+def _decrement_presence(pseudo: str) -> bool:
+    if not pseudo:
+        return False
+    previous = presence_counts.get(pseudo, 0)
+    if previous <= 1:
+        presence_counts.pop(pseudo, None)
+        return previous > 0
+    presence_counts[pseudo] = previous - 1
+    return False
+
+
+def _broadcast_presence_change(pseudo: str, online: bool):
+    if not pseudo or pseudo == "inconnu":
+        return
+    socketio.emit('presence_update', {'pseudo': pseudo, 'online': online}, broadcast=True)
+
+
+def _active_sids_for(pseudo: str):
+    return [sid for sid, name in connected_users.items() if name == pseudo]
 
 def is_admin_name(name: str) -> bool:
     if not name:
@@ -1859,8 +2216,21 @@ def handle_connect():
 @socketio.on('pseudo')
 def handle_pseudo(pseudo):
     # Enregistre le pseudo pour ce sid
-    connected_users[request.sid] = pseudo
-    print(f"{pseudo} connecté (sid={request.sid})")
+    sid = request.sid
+    previous = connected_users.get(sid)
+    if previous and previous != pseudo:
+        if _decrement_presence(previous):
+            _broadcast_presence_change(previous, False)
+
+    connected_users[sid] = pseudo
+    first_connection = False
+    if previous is None or previous != pseudo:
+        first_connection = _increment_presence(pseudo)
+
+    print(f"{pseudo} connecté (sid={sid})")
+
+    if first_connection:
+        _broadcast_presence_change(pseudo, True)
 
     # Envoie la liste complète des pseudos aux admins connectés
     users = list(connected_users.values())
@@ -1876,6 +2246,8 @@ def handle_disconnect():
     sid = request.sid
     pseudo = connected_users.pop(sid, "inconnu")
     print(f"{pseudo} déconnecté (sid={sid})")
+    if _decrement_presence(pseudo):
+        _broadcast_presence_change(pseudo, False)
     _tetris_cleanup_sid(sid, disconnect=True, pseudo=pseudo)
 
     room_id = player_rooms.get(sid)
