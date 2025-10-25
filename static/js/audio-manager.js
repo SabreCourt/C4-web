@@ -124,10 +124,17 @@
       this.panelOpen = false;
       this.musicVolume = this._loadVolume('music', 0.6);
       this.effectsVolume = this._loadVolume('effects', 0.8);
+      this.themeSelect = null;
+      this.availableThemes = [];
+      this._themesPromise = null;
+      this.currentTheme = this._loadThemePreference();
       this._unlockBound = this._unlockContext.bind(this);
       this._handleVisibility = this._handleVisibility.bind(this);
       this._createTrackPresets();
       this._attachUnlockListeners();
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.dataset.arcadeTheme = this.currentTheme;
+      }
     }
 
     _createTrackPresets() {
@@ -188,6 +195,7 @@
       if (!this.panel) {
         this._createPanel();
       }
+      this._setupThemeSelect();
       this.toggleButtons.forEach(button => {
         button.setAttribute('aria-haspopup', 'dialog');
         button.setAttribute('aria-expanded', this.panelOpen ? 'true' : 'false');
@@ -201,9 +209,35 @@
 
     setScene(name, options = {}) {
       this.currentScene = name;
-      this.sceneOptions = options || {};
+      const merged = Object.assign({}, options || {}, { theme: this.currentTheme });
+      this.sceneOptions = merged;
       if (this.context && this.context.state === 'running') {
         this._startMusic();
+      }
+    }
+
+    setTheme(themeId, options = {}) {
+      const theme = themeId || 'default';
+      this.currentTheme = theme;
+      if (options.store !== false) {
+        try {
+          localStorage.setItem('arcade_audio_theme', theme);
+        } catch (error) {
+          /* ignore */
+        }
+      }
+      if (this.themeSelect && this.themeSelect.value !== theme) {
+        this.themeSelect.value = theme;
+      }
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.dataset.arcadeTheme = theme;
+      }
+      this.sceneOptions = Object.assign({}, this.sceneOptions || {}, { theme });
+      if (options.refresh !== false && this.currentScene && this.context && this.context.state === 'running') {
+        this._startMusic();
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('arcade-theme-change', { detail: { theme } }));
       }
     }
 
@@ -268,6 +302,17 @@
           <button type="button" class="sound-panel__close" aria-label="Fermer les réglages audio">✕</button>
         </header>
         <div class="sound-panel__body">
+          <section class="sound-panel__section">
+            <h3 class="sound-panel__section-title">Thème sonore</h3>
+            <p class="sound-panel__helper">Personnalise l'ambiance musicale du hub.</p>
+            <label class="sound-panel__control sound-panel__control--inline">
+              <span class="sound-panel__label">Ambiance</span>
+              <select class="sound-panel__select" data-theme-select>
+                <option value="default">Classique</option>
+              </select>
+            </label>
+            <p class="sound-panel__hint">Ajoute tes thèmes dans <code>static/themes</code>.</p>
+          </section>
           <label class="sound-panel__control">
             <span class="sound-panel__label">Volume de la musique</span>
             <input type="range" min="0" max="100" value="${Math.round(this.musicVolume * 100)}" class="sound-panel__slider" data-sound="music" />
@@ -291,6 +336,7 @@
       this.musicSlider = this.panel.querySelector('input[data-sound="music"]');
       this.effectsSlider = this.panel.querySelector('input[data-sound="effects"]');
       this.muteButton = this.panel.querySelector('.sound-panel__mute');
+      this.themeSelect = this.panel.querySelector('[data-theme-select]');
 
       if (this.musicSlider) {
         this.musicSlider.addEventListener('input', event => {
@@ -333,6 +379,69 @@
           this.togglePanel(false);
         }
       });
+    }
+
+    _setupThemeSelect() {
+      if (!this.panel) {
+        return;
+      }
+      this.themeSelect = this.panel.querySelector('[data-theme-select]');
+      if (!this.themeSelect) {
+        return;
+      }
+      if (!this.themeSelect.dataset.initialized) {
+        this.themeSelect.dataset.initialized = 'true';
+        this.themeSelect.addEventListener('change', event => {
+          this.setTheme(event.target.value);
+        });
+      }
+      this.themeSelect.value = this.currentTheme;
+      this._loadThemes();
+    }
+
+    _loadThemes() {
+      if (!this.themeSelect) {
+        return Promise.resolve();
+      }
+      if (this._themesPromise) {
+        return this._themesPromise;
+      }
+      this._themesPromise = fetch('/ambiance/themes', { headers: { Accept: 'application/json' } })
+        .then(response => (response.ok ? response.json() : { themes: [] }))
+        .then(data => {
+          const themes = Array.isArray(data.themes) && data.themes.length
+            ? data.themes
+            : [{ id: 'default', label: 'Classique' }];
+          this.availableThemes = themes;
+          this._renderThemeOptions(themes);
+        })
+        .catch(() => {
+          this.availableThemes = [{ id: 'default', label: 'Classique' }];
+          this._renderThemeOptions(this.availableThemes);
+        });
+      return this._themesPromise;
+    }
+
+    _renderThemeOptions(themes) {
+      if (!this.themeSelect) {
+        return;
+      }
+      const select = this.themeSelect;
+      select.innerHTML = '';
+      const items = Array.isArray(themes) && themes.length ? themes : [{ id: 'default', label: 'Classique' }];
+      items.forEach(theme => {
+        if (!theme || !theme.id) {
+          return;
+        }
+        const option = document.createElement('option');
+        option.value = theme.id;
+        option.textContent = theme.label || theme.id;
+        select.appendChild(option);
+      });
+      if (!items.some(theme => theme && theme.id === this.currentTheme)) {
+        this.setTheme('default', { store: false, refresh: false });
+      }
+      select.value = this.currentTheme;
     }
 
     setMusicVolume(value, store = true) {
@@ -467,6 +576,15 @@
         /* ignore */
       }
       return fallback;
+    }
+
+    _loadThemePreference() {
+      try {
+        const stored = localStorage.getItem('arcade_audio_theme');
+        return stored || 'default';
+      } catch (error) {
+        return 'default';
+      }
     }
 
     _storeVolume(type, value) {
