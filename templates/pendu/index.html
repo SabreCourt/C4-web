@@ -7,19 +7,18 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
   <script src="{{ url_for('static', filename='js/audio-manager.js') }}" defer></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/menu.js') }}" defer></script>
 </head>
-<body class="neo-arcade-page page-pendu theme-pendu">
-  <div class="portal-transition" id="portal"></div>
+<body class="neo-arcade-page page-pendu theme-pendu" data-pseudo="{{ pseudo }}" data-page="pendu" data-scene="pendu">
+  {% include 'partials/global_nav.html' %}
   <header class="game-header neo-glass">
-    <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
     <div class="game-header__meta">
       <h1>Pendu</h1>
       <p>Devine le mot avant la fin.</p>
     </div>
     <div class="game-header__actions">
-      <button type="button" class="neo-button tertiary" data-sound-toggle>🔊 Ambiance</button>
       <button type="button" class="neo-button primary" id="new-game">Nouvelle partie</button>
-      <a class="neo-button secondary" data-portal-link href="{{ url_for('profile') }}">Profil</a>
     </div>
   </header>
 
@@ -72,27 +71,6 @@
   </main>
 
   <script>
-    const portal = document.getElementById('portal');
-    document.querySelectorAll('[data-portal-link]').forEach(link => {
-      link.addEventListener('click', event => {
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
-          return;
-        }
-        if (!portal) {
-          return;
-        }
-        event.preventDefault();
-        portal.classList.add('is-active');
-        setTimeout(() => {
-          window.location.assign(link.href);
-        }, 320);
-      });
-    });
-
-    if (window.arcadeAudio) {
-      window.arcadeAudio.setScene('pendu');
-    }
-
     const INITIAL_STATE = {{ pendu_state|tojson }};
     const wordElement = document.getElementById('pendu-word');
     const attemptsElement = document.getElementById('pendu-attempts');

@@ -6,22 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
+  <script src="{{ url_for('static', filename='js/audio-manager.js') }}" defer></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/menu.js') }}" defer></script>
 </head>
-<body class="neo-arcade-page page-profile">
-  <div class="portal-transition" id="portal"></div>
-
-  <header class="game-header neo-glass">
-    <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
-    <div class="game-header__meta">
-      <h1>Profil</h1>
-      <p>{{ pseudo }}</p>
-    </div>
-    <div class="game-header__actions">
-      <form method="POST" action="{{ url_for('logout') }}">
-        <button type="submit" class="neo-button tertiary">Déconnexion</button>
-      </form>
-    </div>
-  </header>
+<body class="neo-arcade-page page-profile" data-pseudo="{{ pseudo }}" data-page="profile" data-scene="menu">
+  {% include 'partials/global_nav.html' %}
 
   <main class="profile-main">
     <section class="neo-card profile-overview">
@@ -99,23 +89,5 @@
     </section>
   </main>
 
-  <script>
-    const portal = document.getElementById('portal');
-    document.querySelectorAll('[data-portal-link]').forEach(link => {
-      link.addEventListener('click', event => {
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
-          return;
-        }
-        if (!portal) {
-          return;
-        }
-        event.preventDefault();
-        portal.classList.add('is-active');
-        setTimeout(() => {
-          window.location.assign(link.href);
-        }, 320);
-      });
-    });
-  </script>
 </body>
 </html>

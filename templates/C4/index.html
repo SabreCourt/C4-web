@@ -7,18 +7,15 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
   <script src="{{ url_for('static', filename='js/audio-manager.js') }}" defer></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/menu.js') }}" defer></script>
 </head>
-<body class="neo-arcade-page page-c4 theme-puissance4">
-  <div class="portal-transition" id="portal"></div>
+<body class="neo-arcade-page page-c4 theme-puissance4" data-pseudo="{{ pseudo }}" data-page="puissance4" data-scene="puissance4">
+  {% include 'partials/global_nav.html' %}
   <header class="game-header neo-glass">
-    <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
     <div class="game-header__meta">
       <h1>Puissance 4</h1>
       <p>Affronte l'IA ou un joueur en ligne.</p>
-  </div>
-    <div class="game-header__actions">
-      <button type="button" class="neo-button tertiary" data-sound-toggle>🔊 Ambiance</button>
-      <a class="neo-button secondary" data-portal-link href="{{ url_for('lobby') }}">Lobby</a>
     </div>
   </header>
 
@@ -61,34 +58,12 @@
 
   </main>
 
-  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <script>
-    const portal = document.getElementById('portal');
-    document.querySelectorAll('[data-portal-link]').forEach(link => {
-      link.addEventListener('click', event => {
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
-          return;
-        }
-        if (!portal) {
-          return;
-        }
-        event.preventDefault();
-        portal.classList.add('is-active');
-        setTimeout(() => {
-          window.location.assign(link.href);
-        }, 320);
-      });
-    });
-
     let grille, tourJoueur, jeuFini;
     let pseudo = "";
     let signeJoueur = "X";
     let signeIA = "O";
     const socket = io();
-
-    if (window.arcadeAudio) {
-      window.arcadeAudio.setScene('puissance4');
-    }
 
     window.onload = () => {
       pseudo = document.getElementById("pseudo").value || "Invité";

@@ -7,6 +7,8 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
   <script src="{{ url_for('static', filename='js/audio-manager.js') }}" defer></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/menu.js') }}" defer></script>
   <style>
     body {
       perspective: 1200px;
@@ -126,28 +128,8 @@
     }
   </style>
 </head>
-<body>
-  <div class="portal-transition" id="portal"></div>
-  <header class="nav-hub neo-glass">
-    <div class="profile-chip">
-      <span>🧑‍🚀</span>
-      <span>{{ pseudo }}</span>
-    </div>
-    <nav class="nav-items" aria-label="Sélection des jeux">
-      <a class="nav-item is-active" data-game="hub" href="#hub">Hub</a>
-      <a class="nav-item" data-game="puissance4" href="{{ url_for('lobby') }}">Puissance 4</a>
-      <a class="nav-item" data-game="pendu" href="{{ url_for('pendu') }}">Pendu</a>
-      <a class="nav-item" data-game="tetris" href="{{ url_for('tetris') }}">Tetris</a>
-      <span class="nav-item" data-game="echecs" aria-disabled="true">Échecs</span>
-    </nav>
-    <div class="hub-hero__cta">
-      <form method="POST" action="/logout">
-        <button type="submit" class="neo-button secondary">Déconnexion</button>
-      </form>
-      <a class="neo-button secondary" href="{{ url_for('profile') }}">Profil</a>
-      <button class="hub-sound-toggle" type="button" data-sound-toggle>🔊 Ambiance</button>
-    </div>
-  </header>
+<body class="page-menu" data-pseudo="{{ pseudo }}" data-page="menu" data-scene="menu">
+  {% include 'partials/global_nav.html' %}
   <main id="hub">
     <section class="hub-hero">
       <div class="hub-hero__headline">
@@ -239,40 +221,5 @@
     </footer>
   </main>
 
-  <script>
-    const portal = document.getElementById('portal');
-    const links = document.querySelectorAll('.nav-item[href]');
-
-    if (portal) {
-      links.forEach(link => {
-        link.addEventListener('click', event => {
-          if (
-            event.defaultPrevented ||
-            event.metaKey ||
-            event.ctrlKey ||
-            event.shiftKey ||
-            event.button !== 0
-          ) {
-            return;
-          }
-
-          event.preventDefault();
-          portal.classList.add('is-active');
-          setTimeout(() => {
-            window.location.assign(link.href);
-          }, 360);
-        });
-      });
-    }
-
-    if (window.arcadeAudio) {
-      window.arcadeAudio.setScene('menu');
-      const interactive = document.querySelectorAll('.neo-button, .nav-item[href]');
-      interactive.forEach(element => {
-        element.addEventListener('mouseenter', () => window.arcadeAudio.playEffect('menuSelect'));
-        element.addEventListener('focus', () => window.arcadeAudio.playEffect('menuSelect'));
-      });
-    }
-  </script>
 </body>
 </html>
