@@ -8,11 +8,11 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
   <script src="{{ url_for('static', filename='js/audio-manager.js') }}" defer></script>
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" integrity="sha384-KA7m0DwgQGmeRC6Xre3hJO+ZxpanOauVh4Czdqbg8lDKJ3bZZYVYmP+y4F31x40L" crossorigin="anonymous"></script>
+  <script src="{{ url_for('static', filename='js/menu.js') }}" defer></script>
 </head>
-<body class="neo-arcade-page page-tetris theme-tetris">
-  <div class="portal-transition" id="portal"></div>
+<body class="neo-arcade-page page-tetris theme-tetris" data-pseudo="{{ pseudo }}" data-active-page="jeux" data-game-id="tetris" data-audio-scene="tetris">
+  {% include 'partials/global_header.html' %}
   <header class="game-header neo-glass">
-    <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
     <div class="game-header__meta">
       <h1>Tetris</h1>
       <p>Empile les pièces et maîtrise le rythme.</p>
@@ -20,7 +20,6 @@
     <div class="game-header__actions">
       <button type="button" class="neo-button tertiary" data-sound-toggle>🔊 Ambiance</button>
       <button type="button" class="neo-button primary" id="header-new-game">Nouvelle partie</button>
-      <a class="neo-button secondary" data-portal-link href="{{ url_for('profile') }}">Profil</a>
     </div>
   </header>
 
@@ -220,6 +219,7 @@
 
     const pseudo = {{ pseudo|tojson }};
     const initialBestScore = {{ best_score|tojson }};
+    const TETRIS_SOLO_STATE_KEY = 'neoArcade:tetris:solo';
 
     const socket = io();
     socket.on('demande_pseudo', () => {
@@ -454,6 +454,22 @@
         }
       }
 
+      pause() {
+        if (!this.running) return;
+        this.running = false;
+        if (this._raf) {
+          cancelAnimationFrame(this._raf);
+          this._raf = null;
+        }
+      }
+
+      resume() {
+        if (this.running || this.finished) return;
+        this.running = true;
+        this.lastTime = performance.now();
+        this._raf = requestAnimationFrame(this.update.bind(this));
+      }
+
       isRunning() {
         return this.running;
       }
@@ -661,6 +677,69 @@
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x + 1, y + 1, this.blockSize - 2, this.blockSize - 2);
       }
+
+      serialize() {
+        return {
+          board: cloneBoard(this.board),
+          current: this.current
+            ? {
+                type: this.current.type,
+                matrix: this.current.matrix.map(row => row.slice()),
+                row: this.current.row,
+                col: this.current.col
+              }
+            : null,
+          previewQueue: this.previewQueue.slice(),
+          score: this.score,
+          lines: this.lines,
+          dropInterval: this.dropInterval,
+          dropCounter: this.dropCounter,
+          running: this.running,
+          finished: this.finished,
+          lastClearWasTetris: this.lastClearWasTetris,
+          lastLockWasHardDrop: this.lastLockWasHardDrop,
+          startElapsed: this.startTimeMs
+            ? ((this.running ? performance.now() : this.lastTime || performance.now()) - this.startTimeMs)
+            : 0
+        };
+      }
+
+      loadState(state) {
+        if (!state) {
+          return;
+        }
+        if (Array.isArray(state.board)) {
+          this.board = state.board.map(row => Array.isArray(row) ? row.slice() : []);
+        }
+        this.previewQueue = Array.isArray(state.previewQueue) ? state.previewQueue.slice() : [];
+        if (state.current && state.current.matrix) {
+          this.current = {
+            type: state.current.type,
+            matrix: state.current.matrix.map(row => Array.isArray(row) ? row.slice() : []),
+            row: Number(state.current.row) || 0,
+            col: Number(state.current.col) || 0
+          };
+        } else {
+          this.current = null;
+        }
+        this.score = Number(state.score) || 0;
+        this.lines = Number(state.lines) || 0;
+        this.dropInterval = Number(state.dropInterval) || this.initialDropInterval;
+        this.dropCounter = Number(state.dropCounter) || 0;
+        this.lastClearWasTetris = Boolean(state.lastClearWasTetris);
+        this.lastLockWasHardDrop = Boolean(state.lastLockWasHardDrop);
+        this.finished = Boolean(state.finished);
+        const elapsed = Number(state.startElapsed) || 0;
+        this.startTimeMs = performance.now() - elapsed;
+        this.lastTime = performance.now();
+        this.renderPreview();
+        this.draw();
+        if (state.running && !this.finished) {
+          this.resume();
+        } else {
+          this.running = false;
+        }
+      }
     }
 
     const coarsePointerQuery = window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
@@ -789,11 +868,14 @@
       startBtn: document.getElementById('solo-start'),
       bestScore: Number(initialBestScore) || 0,
       game: null,
+      pieceSource: null,
       isSaving: false
     };
 
     solo.bestEl.textContent = solo.bestScore;
     solo.statusEl.textContent = 'Appuie sur « Lancer une partie » pour commencer.';
+
+    const soloRestored = restoreSoloState();
 
     setupTouchControls(solo.canvas);
 
@@ -805,24 +887,124 @@
         if (typeof payload.score === 'number' && payload.score > solo.bestScore) {
           solo.bestScore = payload.score;
           solo.bestEl.textContent = solo.bestScore;
+          saveSoloState();
         }
       } catch (error) {
         console.warn('Impossible de récupérer le meilleur score', error);
       }
     }
 
-    function createBagGenerator() {
-      let bag = [];
-      return function nextPiece() {
-        if (bag.length === 0) {
-          bag = PIECE_TYPES.slice();
-          for (let i = bag.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [bag[i], bag[j]] = [bag[j], bag[i]];
-          }
+    function createBagGenerator(savedState) {
+      let bag = Array.isArray(savedState && savedState.bag) ? savedState.bag.slice() : [];
+      const refill = () => {
+        bag = PIECE_TYPES.slice();
+        for (let i = bag.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [bag[i], bag[j]] = [bag[j], bag[i]];
+        }
+      };
+      const generator = function nextPiece() {
+        if (!bag.length) {
+          refill();
         }
         return bag.pop();
       };
+      generator.serialize = () => ({ bag: bag.slice() });
+      return generator;
+    }
+
+    function clearSoloState() {
+      try {
+        sessionStorage.removeItem(TETRIS_SOLO_STATE_KEY);
+      } catch (error) {
+        console.warn('tetris_state_clear_failed', error);
+      }
+    }
+
+    function saveSoloState(extra) {
+      if (!solo.game) {
+        clearSoloState();
+        window.dispatchEvent(new CustomEvent('neoarcade:save-game-state', {
+          detail: { state: null }
+        }));
+        return;
+      }
+      try {
+        const payload = {
+          game: solo.game.serialize(),
+          generator: solo.pieceSource && typeof solo.pieceSource.serialize === 'function'
+            ? solo.pieceSource.serialize()
+            : null,
+          score: Number(solo.scoreEl.textContent) || 0,
+          lines: Number(solo.linesEl.textContent) || 0,
+          bestScore: solo.bestScore,
+          timestamp: Date.now()
+        };
+        if (extra && typeof extra === 'object') {
+          Object.assign(payload, extra);
+        }
+        sessionStorage.setItem(TETRIS_SOLO_STATE_KEY, JSON.stringify(payload));
+        window.dispatchEvent(new CustomEvent('neoarcade:save-game-state', {
+          detail: {
+            state: { game: 'tetris', mode: 'solo', running: solo.game.isRunning() },
+            meta: { title: 'Tetris' }
+          }
+        }));
+      } catch (error) {
+        console.warn('tetris_state_save_failed', error);
+      }
+    }
+
+    function restoreSoloState() {
+      let stored;
+      try {
+        const raw = sessionStorage.getItem(TETRIS_SOLO_STATE_KEY);
+        stored = raw ? JSON.parse(raw) : null;
+      } catch (error) {
+        console.warn('tetris_state_restore_failed', error);
+        stored = null;
+      }
+      if (!stored || !stored.game) {
+        return false;
+      }
+      const pieceSource = createBagGenerator(stored.generator);
+      solo.pieceSource = pieceSource;
+      solo.game = new TetrisGame({
+        canvas: solo.canvas,
+        previewContainer: solo.next,
+        pieceSource,
+        dropInterval: 900,
+        onBoardChange: () => saveSoloState(),
+        onScoreChange: payload => {
+          updateSoloScore(payload);
+          saveSoloState();
+        },
+        onGameOver: endSoloGame
+      });
+      solo.game.loadState(stored.game);
+      if (typeof stored.score === 'number') {
+        solo.scoreEl.textContent = stored.score;
+      }
+      if (typeof stored.lines === 'number') {
+        solo.linesEl.textContent = stored.lines;
+      }
+      if (typeof stored.bestScore === 'number' && stored.bestScore > solo.bestScore) {
+        solo.bestScore = stored.bestScore;
+        solo.bestEl.textContent = solo.bestScore;
+      }
+      const wasRunning = stored.game && stored.game.running;
+      const wasFinished = stored.game && stored.game.finished;
+      if (wasFinished) {
+        solo.statusEl.textContent = 'Partie terminée. Relance une partie pour recommencer.';
+      } else if (wasRunning) {
+        solo.statusEl.textContent = 'Partie reprise.';
+      } else {
+        solo.statusEl.textContent = 'Partie enregistrée prête à reprendre.';
+      }
+      if (wasRunning && solo.game) {
+        activeGame = solo.game;
+      }
+      return true;
     }
 
     async function saveSoloScore(score) {
@@ -846,6 +1028,7 @@
             if (window.arcadeAudio && improved) {
               window.arcadeAudio.playEffect('victory');
             }
+            saveSoloState();
           }
         }
       } catch (error) {
@@ -873,27 +1056,36 @@
           window.arcadeAudio.playEffect('menuSelect');
         }
       }
+      saveSoloState({ gameOver: true });
     }
 
     function startSoloGame() {
       if (solo.game) {
         solo.game.stop();
       }
-      const pieceSource = createBagGenerator();
+      clearSoloState();
+      solo.pieceSource = createBagGenerator();
       solo.game = new TetrisGame({
         canvas: solo.canvas,
         previewContainer: solo.next,
-        pieceSource,
+        pieceSource: solo.pieceSource,
         dropInterval: 900,
-        onBoardChange: () => {},
-        onScoreChange: updateSoloScore,
-        onGameOver: endSoloGame
+        onBoardChange: () => saveSoloState(),
+        onScoreChange: payload => {
+          updateSoloScore(payload);
+          saveSoloState();
+        },
+        onGameOver: result => {
+          endSoloGame(result);
+          saveSoloState({ gameOver: true });
+        }
       });
       solo.scoreEl.textContent = '0';
       solo.linesEl.textContent = '0';
       solo.statusEl.textContent = 'Bonne partie !';
       activeGame = solo.game;
       solo.game.start();
+      saveSoloState();
     }
 
     solo.startBtn.addEventListener('click', () => {
@@ -904,6 +1096,12 @@
     });
 
     refreshSoloBest();
+    if (soloRestored) {
+      saveSoloState();
+    }
+
+    window.addEventListener('beforeunload', () => saveSoloState());
+    window.addEventListener('neoarcade:beforeNavigate', () => saveSoloState());
 
     const multi = {
       lobby: document.getElementById('multi-lobby'),

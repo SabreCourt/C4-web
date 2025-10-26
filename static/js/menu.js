@@ -5,6 +5,11 @@
   const pseudo = body ? body.dataset.pseudo || '' : '';
 
   const portal = document.getElementById('portal');
+  const globalNav = document.querySelector('[data-global-nav]');
+  const resumeLink = globalNav ? globalNav.querySelector('[data-resume-link]') : null;
+  const dropdownContainer = globalNav ? globalNav.querySelector('.nav-dropdown') : null;
+  const dropdownToggle = dropdownContainer ? dropdownContainer.querySelector('.nav-dropdown__toggle') : null;
+  const dropdownMenu = dropdownContainer ? dropdownContainer.querySelector('[data-nav-dropdown]') : null;
   const friendsButton = document.querySelector('[data-action="friends"]');
   const navBadge = document.querySelector('[data-friends-unread]');
   const contactPanel = document.getElementById('contact-panel');
@@ -32,12 +37,186 @@
   let socket;
   let loadingContacts = false;
   const pendingRead = new Set();
+  const LAST_GAME_KEY = 'neoArcade:lastGame';
+  let dropdownOpen = false;
 
   document.addEventListener('DOMContentLoaded', () => {
     initPortalLinks();
     initAudioScene();
     initContacts();
+    initGlobalNav();
   });
+
+  function initGlobalNav() {
+    highlightActiveNav();
+    setupDropdown();
+    setupResumeTracking();
+    window.addEventListener('neoarcade:updateResume', updateResumeLink);
+  }
+
+  function highlightActiveNav() {
+    if (!globalNav) {
+      return;
+    }
+    const activePage = body ? body.dataset.activePage : '';
+    if (activePage) {
+      globalNav.querySelectorAll('.nav-item[data-game]').forEach(item => {
+        item.classList.toggle('is-active', item.dataset.game === activePage);
+      });
+    }
+    const activeGame = body ? body.dataset.gameId : '';
+    if (dropdownMenu) {
+      dropdownMenu.querySelectorAll('.nav-dropdown__link').forEach(link => {
+        link.classList.toggle('is-active', link.dataset.gameLink === activeGame);
+      });
+      if (activeGame && dropdownContainer) {
+        dropdownContainer.classList.toggle('is-active', Boolean(activeGame));
+      }
+    }
+  }
+
+  function setupDropdown() {
+    if (!dropdownContainer || !dropdownToggle || !dropdownMenu) {
+      return;
+    }
+
+    dropdownToggle.setAttribute('aria-expanded', 'false');
+    dropdownMenu.hidden = true;
+
+    dropdownToggle.addEventListener('click', () => {
+      toggleDropdown(!dropdownOpen);
+    });
+
+    dropdownToggle.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        toggleDropdown(true);
+        const firstLink = dropdownMenu.querySelector('.nav-dropdown__link');
+        if (firstLink) {
+          firstLink.focus();
+        }
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDropdown();
+      }
+    });
+
+    dropdownMenu.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDropdown();
+        dropdownToggle.focus();
+      }
+    });
+
+    dropdownMenu.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => closeDropdown());
+    });
+
+    document.addEventListener('click', event => {
+      if (!dropdownOpen) {
+        return;
+      }
+      if (dropdownContainer && !dropdownContainer.contains(event.target)) {
+        closeDropdown();
+      }
+    });
+  }
+
+  function toggleDropdown(forceOpen) {
+    if (!dropdownContainer || !dropdownToggle || !dropdownMenu) {
+      return;
+    }
+    const open = typeof forceOpen === 'boolean' ? forceOpen : !dropdownOpen;
+    dropdownOpen = open;
+    dropdownContainer.classList.toggle('is-open', open);
+    dropdownToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    dropdownMenu.hidden = !open;
+  }
+
+  function closeDropdown() {
+    if (dropdownOpen) {
+      toggleDropdown(false);
+    }
+  }
+
+  function setupResumeTracking() {
+    updateResumeLink();
+    const gameId = body ? body.dataset.gameId : '';
+    if (!gameId) {
+      return;
+    }
+    const persist = () => saveLastGame(gameId);
+    persist();
+    window.addEventListener('beforeunload', persist);
+    window.addEventListener('neoarcade:save-game-state', event => {
+      const detail = event && event.detail;
+      if (detail && detail.state) {
+        saveLastGame(gameId, detail.state, detail.meta);
+      } else {
+        saveLastGame(gameId);
+      }
+    });
+  }
+
+  function saveLastGame(gameId, state, meta) {
+    if (!gameId) {
+      return;
+    }
+    const payload = {
+      game: gameId,
+      url: window.location.pathname + window.location.search + window.location.hash,
+      title: document.title,
+      savedAt: Date.now(),
+    };
+    if (state) {
+      payload.state = state;
+    }
+    if (meta && typeof meta === 'object') {
+      payload.meta = meta;
+    }
+    try {
+      sessionStorage.setItem(LAST_GAME_KEY, JSON.stringify(payload));
+    } catch (error) {
+      console.warn('resume_state_save_failed', error);
+    }
+    updateResumeLink();
+  }
+
+  function updateResumeLink() {
+    if (!resumeLink) {
+      return;
+    }
+    let payload = null;
+    try {
+      payload = sessionStorage.getItem(LAST_GAME_KEY);
+      payload = payload ? JSON.parse(payload) : null;
+    } catch (error) {
+      payload = null;
+    }
+    if (payload && payload.url) {
+      resumeLink.hidden = false;
+      resumeLink.setAttribute('href', payload.url);
+      const label = payload.title ? `Reprendre ${payload.title}` : 'Reprendre la partie';
+      const text = payload.meta && payload.meta.title ? `▶️ Reprendre ${payload.meta.title}` : '▶️ Reprendre';
+      resumeLink.dataset.resumeGame = payload.game || '';
+      resumeLink.setAttribute('aria-label', label);
+      resumeLink.textContent = text;
+    } else {
+      resumeLink.hidden = true;
+      resumeLink.removeAttribute('href');
+      resumeLink.removeAttribute('aria-label');
+      resumeLink.dataset.resumeGame = '';
+      resumeLink.textContent = '▶️ Reprendre';
+    }
+  }
+
+  function dispatchBeforeNavigate(targetUrl) {
+    const event = new CustomEvent('neoarcade:beforeNavigate', {
+      detail: { target: targetUrl }
+    });
+    window.dispatchEvent(event);
+  }
 
   function initPortalLinks() {
     if (!portal) {
@@ -51,7 +230,7 @@
       }, 360);
     };
 
-    document.querySelectorAll('.nav-item[href], [data-portal-link]').forEach(link => {
+    document.querySelectorAll('.nav-item[href], .nav-dropdown__link[href], [data-portal-link]').forEach(link => {
       link.addEventListener('click', event => {
         if (
           event.defaultPrevented ||
@@ -67,6 +246,8 @@
           return;
         }
         event.preventDefault();
+        dispatchBeforeNavigate(link.href);
+        closeDropdown();
         navigateWithPortal(link.href);
       });
     });
@@ -76,7 +257,10 @@
     if (!window.arcadeAudio) {
       return;
     }
-    window.arcadeAudio.setScene('menu');
+    const scene = body ? body.dataset.audioScene : '';
+    if (scene) {
+      window.arcadeAudio.setScene(scene);
+    }
     const interactive = document.querySelectorAll('.neo-button, .nav-item');
     const playHover = () => window.arcadeAudio.playEffect('menuSelect');
     interactive.forEach(element => {

@@ -1,0 +1,86 @@
+<div class="portal-transition" id="portal"></div>
+
+<div class="contact-panel neo-glass" id="contact-panel" aria-hidden="true" tabindex="-1">
+  <header class="contact-panel__header">
+    <div>
+      <h2>Contacts</h2>
+      <p>Discute avec tes amis et vois qui est en ligne.</p>
+    </div>
+    <button type="button" class="contact-panel__close" aria-label="Fermer le panneau des contacts">✕</button>
+  </header>
+  <div class="contact-panel__body">
+    <aside class="contact-panel__sidebar">
+      <label class="contact-panel__search">
+        <span class="sr-only">Rechercher un contact</span>
+        <input type="search" id="contact-search" placeholder="Rechercher un joueur" autocomplete="off" />
+      </label>
+      <ul class="contact-panel__list" id="contact-list" aria-live="polite"></ul>
+    </aside>
+    <section class="contact-panel__conversation" aria-live="polite">
+      <div class="contact-panel__empty" id="contact-empty-state">
+        <p>Sélectionne un ami pour commencer la discussion.</p>
+      </div>
+      <div class="contact-panel__thread hidden" id="contact-thread" data-current-contact="">
+        <header class="conversation__header">
+          <div class="conversation__meta">
+            <h3 id="conversation-contact">Contact</h3>
+            <span class="conversation__status" id="conversation-status">Hors ligne</span>
+          </div>
+          <button type="button" class="conversation__close" aria-label="Fermer la conversation">✕</button>
+        </header>
+        <div class="conversation__messages" id="conversation-messages" role="log" aria-live="polite"></div>
+        <form class="conversation__composer" id="conversation-form" autocomplete="off">
+          <label class="sr-only" for="conversation-input">Écrire un message</label>
+          <input type="text" id="conversation-input" name="message" placeholder="Écris ton message..." required />
+          <button type="submit" class="neo-button primary">Envoyer</button>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<header class="nav-hub neo-glass" data-global-nav>
+  <div class="profile-chip" data-nav-profile>
+    <span>🧑‍🚀</span>
+    <span>{{ pseudo }}</span>
+  </div>
+  <nav class="nav-items" aria-label="Navigation principale">
+    <a class="nav-item" data-game="hub" href="{{ url_for('menu') }}">🏠 Hub</a>
+    <div class="nav-dropdown">
+      <button type="button" class="nav-item nav-item--control nav-dropdown__toggle" data-game="jeux" aria-expanded="false" aria-haspopup="true">
+        🎮 Jeux
+      </button>
+      <div class="nav-dropdown__menu" role="menu" hidden data-nav-dropdown>
+        <a class="nav-dropdown__link" data-game-link="puissance4" href="{{ url_for('jeu') }}" role="menuitem">Puissance 4</a>
+        <a class="nav-dropdown__link" data-game-link="tetris" href="{{ url_for('tetris') }}" role="menuitem">Tetris</a>
+        <a class="nav-dropdown__link" data-game-link="pendu" href="{{ url_for('pendu') }}" role="menuitem">Pendu</a>
+        <a class="nav-dropdown__link" data-game-link="c4_multi" href="{{ url_for('lobby_multi') }}" role="menuitem">Puissance 4 (multi)</a>
+        <a class="nav-dropdown__link" data-game-link="tetris_multi" href="{{ url_for('tetris') }}#multi" role="menuitem">Tetris (duel)</a>
+      </div>
+    </div>
+    <a class="nav-item" data-game="profil" href="{{ url_for('profile') }}">👤 Profil</a>
+    <button
+      type="button"
+      class="nav-item nav-item--control"
+      data-game="amis"
+      data-action="friends"
+      aria-controls="contact-panel"
+      aria-expanded="false"
+    >
+      🤝 Amis
+      <span class="nav-item__badge" data-friends-unread hidden>0</span>
+    </button>
+    <button
+      type="button"
+      class="nav-item nav-item--control"
+      data-game="ambiance"
+      data-sound-toggle
+    >
+      🎵 Ambiance
+    </button>
+    <a class="nav-item" data-game="resume" href="#" data-resume-link hidden>▶️ Reprendre</a>
+    <form class="nav-item-form" method="POST" action="{{ url_for('logout') }}">
+      <button type="submit" class="nav-item nav-item--control nav-item--danger" data-game="logout">🚪 Déconnexion</button>
+    </form>
+  </nav>
+</header>

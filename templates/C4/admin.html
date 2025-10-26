@@ -7,18 +7,15 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <script src="{{ url_for('static', filename='js/menu.js') }}" defer></script>
 </head>
-<body class="neo-arcade-page page-c4 theme-puissance4 admin-panel">
-  <div class="portal-transition" id="portal"></div>
+<body class="neo-arcade-page page-c4 theme-puissance4 admin-panel" data-pseudo="{{ pseudo }}" data-active-page="jeux" data-game-id="c4_multi" data-audio-scene="puissance4">
+  {% include 'partials/global_header.html' %}
 
   <header class="game-header neo-glass">
-    <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
     <div class="game-header__meta">
       <h1>Panneau administrateur</h1>
       <p>Surveille les joueurs connectés et rejoins leurs parties en direct.</p>
-    </div>
-    <div class="game-header__actions">
-      <a class="neo-button secondary" data-portal-link href="{{ url_for('lobby') }}">Retour lobby</a>
     </div>
   </header>
 
@@ -44,30 +41,8 @@
   </main>
 
   <script>
-    const portal = document.getElementById('portal');
     const socket = io();
     const list = document.getElementById('user-list');
-
-    const navigateWithPortal = (url) => {
-      if (!portal) {
-        window.location.assign(url);
-        return;
-      }
-      portal.classList.add('is-active');
-      setTimeout(() => {
-        window.location.assign(url);
-      }, 320);
-    };
-
-    document.querySelectorAll('[data-portal-link]').forEach(link => {
-      link.addEventListener('click', event => {
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
-          return;
-        }
-        event.preventDefault();
-        navigateWithPortal(link.href);
-      });
-    });
 
     socket.on('connect', () => {
       socket.emit('pseudo', '{{ pseudo|e }}');
