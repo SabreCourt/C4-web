@@ -7,18 +7,18 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
   <script src="{{ url_for('static', filename='js/audio-manager.js') }}" defer></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/menu.js') }}" defer></script>
 </head>
-<body class="neo-arcade-page page-c4 theme-puissance4">
-  <div class="portal-transition" id="portal"></div>
+<body class="neo-arcade-page page-c4 theme-puissance4" data-pseudo="{{ pseudo }}" data-active-page="jeux" data-game-id="puissance4" data-audio-scene="puissance4">
+  {% include 'partials/global_header.html' %}
   <header class="game-header neo-glass">
-    <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
     <div class="game-header__meta">
       <h1>Puissance 4</h1>
       <p>Affronte l'IA ou un joueur en ligne.</p>
-  </div>
+    </div>
     <div class="game-header__actions">
       <button type="button" class="neo-button tertiary" data-sound-toggle>🔊 Ambiance</button>
-      <a class="neo-button secondary" data-portal-link href="{{ url_for('lobby') }}">Lobby</a>
     </div>
   </header>
 
@@ -85,18 +85,91 @@
     let signeJoueur = "X";
     let signeIA = "O";
     const socket = io();
+    const CONNECT4_STATE_KEY = 'neoArcade:connect4:solo';
 
     if (window.arcadeAudio) {
       window.arcadeAudio.setScene('puissance4');
     }
 
+    function sauvegarderEtatJeu(extra) {
+      if (!grille) {
+        return;
+      }
+      try {
+        const messageEl = document.getElementById("message");
+        const payload = {
+          grille: grille.map(row => row.slice()),
+          tourJoueur: Boolean(tourJoueur),
+          jeuFini: Boolean(jeuFini),
+          pseudo,
+          signeJoueur,
+          signeIA,
+          message: messageEl ? messageEl.textContent : '',
+          timestamp: Date.now(),
+        };
+        if (extra && typeof extra === 'object') {
+          Object.assign(payload, extra);
+        }
+        sessionStorage.setItem(CONNECT4_STATE_KEY, JSON.stringify(payload));
+        window.dispatchEvent(new CustomEvent('neoarcade:save-game-state', {
+          detail: {
+            state: { game: 'puissance4', tourJoueur: payload.tourJoueur, jeuFini: payload.jeuFini },
+            meta: { title: 'Puissance 4' }
+          }
+        }));
+      } catch (error) {
+        console.warn('connect4_state_save_failed', error);
+      }
+    }
+
+    function restaurerEtatJeu() {
+      let sauvegarde;
+      try {
+        const brute = sessionStorage.getItem(CONNECT4_STATE_KEY);
+        sauvegarde = brute ? JSON.parse(brute) : null;
+      } catch (error) {
+        console.warn('connect4_state_restore_failed', error);
+        sauvegarde = null;
+      }
+      if (!sauvegarde || !Array.isArray(sauvegarde.grille)) {
+        return false;
+      }
+      grille = sauvegarde.grille.map(row => Array.isArray(row) ? row.slice() : []);
+      tourJoueur = Boolean(sauvegarde.tourJoueur);
+      jeuFini = Boolean(sauvegarde.jeuFini);
+      pseudo = sauvegarde.pseudo || pseudo;
+      signeJoueur = sauvegarde.signeJoueur || signeJoueur;
+      signeIA = sauvegarde.signeIA || signeIA;
+      afficherGrille();
+      const messageEl = document.getElementById("message");
+      if (messageEl && typeof sauvegarde.message === 'string') {
+        messageEl.textContent = sauvegarde.message;
+      }
+      if (jeuFini) {
+        const victoire = verifierVictoire();
+        if (victoire.gagnant) {
+          surlignerVictoire(victoire.coords, victoire.gagnant);
+        }
+      }
+      return true;
+    }
+
+    function nettoyerEtatSauvegarde() {
+      sessionStorage.removeItem(CONNECT4_STATE_KEY);
+    }
+
     window.onload = () => {
       pseudo = document.getElementById("pseudo").value || "Invité";
       socket.emit("pseudo", pseudo);
-      initialiserJeu();
+      if (!restaurerEtatJeu()) {
+        initialiserJeu();
+      } else {
+        sauvegarderEtatJeu();
+      }
     };
 
     function initialiserJeu() {
+      nettoyerEtatSauvegarde();
       fetch('/reset', { method: 'POST' });
 
       socket.emit("reset_grille", pseudo);
@@ -113,6 +186,7 @@
         document.getElementById("message").textContent = "L'IA commence...";
         iaJoue();
       }
+      sauvegarderEtatJeu();
     }
 
     async function iaJoue() {
@@ -147,11 +221,13 @@
         surlignerVictoire(resultat.coords, 2);
         jeuFini = true;
         await signalerFinPartie("ia");
+        sauvegarderEtatJeu();
         return;
       }
 
       tourJoueur = true;
       document.getElementById("message").textContent = "À vous de jouer !";
+      sauvegarderEtatJeu();
     }
 
     function afficherGrille() {
@@ -273,6 +349,8 @@
         grille: grille,
       });
 
+      sauvegarderEtatJeu();
+
       await animerJeton(ligne, colonne, 1);
 
       let resultat = verifierVictoire();
@@ -284,6 +362,7 @@
           window.arcadeAudio.playEffect('victory');
         }
         await signalerFinPartie("joueur");
+        sauvegarderEtatJeu();
         return;
       }
 
@@ -317,11 +396,13 @@
           window.arcadeAudio.playEffect('defeat');
         }
         await signalerFinPartie("ia");
+        sauvegarderEtatJeu();
         return;
       }
 
       tourJoueur = true;
       document.getElementById("message").textContent = "À vous de jouer !";
+      sauvegarderEtatJeu();
 
       socket.emit("etat_grille", {
         pseudo: pseudo,
@@ -349,6 +430,9 @@
       const pseudo = getPseudo();
       socket.emit("pseudo", pseudo);
     });
+
+    window.addEventListener('beforeunload', () => sauvegarderEtatJeu());
+    window.addEventListener('neoarcade:beforeNavigate', () => sauvegarderEtatJeu());
 
   </script>
 </body>

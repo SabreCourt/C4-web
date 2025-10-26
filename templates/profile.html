@@ -6,20 +6,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/menu.js') }}" defer></script>
 </head>
-<body class="neo-arcade-page page-profile">
-  <div class="portal-transition" id="portal"></div>
+<body class="neo-arcade-page page-profile" data-pseudo="{{ pseudo }}" data-active-page="profil">
+  {% include 'partials/global_header.html' %}
 
   <header class="game-header neo-glass">
-    <a class="game-header__brand" data-portal-link href="{{ url_for('menu') }}">⬅️ Hub</a>
     <div class="game-header__meta">
       <h1>Profil</h1>
       <p>{{ pseudo }}</p>
-    </div>
-    <div class="game-header__actions">
-      <form method="POST" action="{{ url_for('logout') }}">
-        <button type="submit" class="neo-button tertiary">Déconnexion</button>
-      </form>
     </div>
   </header>
 

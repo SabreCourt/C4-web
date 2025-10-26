@@ -5,6 +5,9 @@
   <title>Partie en ligne – Puissance 4</title>
   <meta name="viewport" content="width=device-width, initial-scale=0.95" />
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/neo-arcade.css') }}" />
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/menu.js') }}" defer></script>
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" integrity="sha384-KA7m0DwgQGmeRC6Xre3hJO+ZxpanOauVh4Czdqbg8lDKJ3bZZYVYmP+y4F31x40L" crossorigin="anonymous"></script>
   <style>
     :root {
@@ -17,8 +20,10 @@
       margin: 0;
       min-height: 100vh;
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 20px;
       background: radial-gradient(circle at 30% 30%, #1b2735, #090a0f 80%);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #f0f4f8;
@@ -209,7 +214,7 @@
       flex-wrap: wrap;
       gap: 12px;
     }
-    .actions button, .actions a {
+    .actions button {
       padding: 12px 20px;
       border-radius: 10px;
       border: none;
@@ -236,15 +241,6 @@
       color: #1b2735;
     }
     #leave:hover {
-      transform: translateY(-2px);
-      opacity: 0.92;
-    }
-    a.back {
-      text-decoration: none;
-      background: rgba(255,255,255,0.12);
-      color: rgba(240,244,248,0.9);
-    }
-    a.back:hover {
       transform: translateY(-2px);
       opacity: 0.92;
     }
@@ -291,7 +287,8 @@
     }
   </style>
 </head>
-<body>
+<body class="neo-arcade-page page-c4 theme-puissance4" data-pseudo="{{ pseudo }}" data-active-page="jeux" data-game-id="c4_multi" data-audio-scene="puissance4">
+  {% include 'partials/global_header.html' %}
   <div class="container">
     <header>
       <div class="player-block">
@@ -322,7 +319,6 @@
     <div class="actions">
       <button id="reset">🔄 Réinitialiser (0/2)</button>
       <button id="leave" disabled>Quitter la partie</button>
-      <a href="/lobby_multi" class="back">Retour au lobby</a>
     </div>
   </div>
 
