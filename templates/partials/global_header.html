@@ -1,3 +1,44 @@
+<style>
+  /* Correctifs de layout pour le chat */
+  #contact-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: 100vh; /* Empêche le panneau de dépasser la hauteur de l'écran */
+  }
+
+  .contact-panel__body {
+    flex: 1;
+    display: flex;
+    min-height: 0; /* Important pour le scroll flexbox */
+    overflow: hidden;
+  }
+
+  .contact-panel__conversation {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .contact-panel__thread {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .conversation__messages {
+    flex: 1;
+    overflow-y: auto; /* Active le scroll uniquement sur les messages */
+    min-height: 0;
+  }
+
+  .conversation__composer {
+    flex-shrink: 0; /* Empêche le formulaire d'être écrasé */
+  }
+</style>
+
 <div class="portal-transition" id="portal"></div>
 
 <div class="contact-panel neo-glass" id="contact-panel" aria-hidden="true" tabindex="-1">
